@@ -2,17 +2,33 @@
 
     class Database_Connection
     {
-        private $instance = null;
+        private static $instance = null;
+        private $connection;
 
         private function __construct()
         {
+            //Database connection credentials
+            $servername = "localhost";
+            $username = "wyvernsi_sebMurray";
+            $password = "L0n3someP0l3cat";
+            $database = "wyvernsi_sebM";
 
+            $this->connection = new mysqli($servername, $username, $password, $database);
+
+            if ($this->connection->connect_error) {
+                //Log error: DB_CONNECT error
+            }
         }
 
         //Implementation of singleton class design
         public static function get_instance()
         {
+            if (self::$instance == null)
+            {
+                self::$instance = new Database_Connection;
+            }
 
+            return self::$instance->connection;
         }
 
     }
@@ -20,62 +36,277 @@
     class Query
     {
         private $database;
+        private $query;
+        private $result;
+        private $query_executed = false;
+        private const FIELD_HEADINGS = 
+        [
+            "COLUMN_NAME" => "Column Name",
+            "club_ID" => "Club ID",
+            "club_name" => "Club Name",
+            "error_ID" => "Error ID",
+            "error_message" => "Error Message",
+            "error_time" => "Time",
+            "event_ID" => "Event ID",
+            "event_name" => "Event Name",
+            "event_date" => "Date",
+            "event_meet_time" => "Meet Time",
+            "event_start_time" => "Start Time",
+            "event_description" => "Event Description",
+            "event_team_ID" => "Team ID",
+            "event_type_ID" => "Event Type ID",
+            "event_type_name" => "Event Type",
+            "event_type_description" => "Description",
+            "event_gender_restriction" => "Gender Restriction",
+            "min_age" => "Min Age",
+            "max_age" => "Max Age",
+            "guardianship_ID" => "Guardianship ID",
+            "parent_ID" => "Parent ID",
+            "child_ID" => "Child ID",
+            "member_ID" => "Member ID",
+            "member_fname" => "First Name",
+            "member_lname" => "Last Name",
+            "member_DOB" => "Date of Birth",
+            "member_gender" => "Gender",
+            "member_email" => "Email",
+            "member_whole_name" => "Name",
+            "member_password" => "Password",
+            "admin" => "Admin?",
+            "participant_ID" => "Participant ID",
+            "role_ID" => "Role ID",
+            "role_name" => "Role",
+            "team_ID" => "Team ID",
+            "team_name" => "Teamname",
+            "team_nickname" => "Team Nickname",
+            "team_member_ID" => "Team Member ID"
+        ];
 
-        public function __construct(Database_Connection $database)
+        public function __construct(string $sql, array $params = [])
         {
-            $this->database = $database;
+            $this->database = Database_Connection::get_instance();
+
+            $this->execute_query($sql, $params);
         }
 
-        public function execute_query()
+        private function execute_query(string $sql, array $params)
         {
+            if ($this->query_executed == false)
+            {
 
+                $this->query = $this->database->prepare($sql);
+
+                if ($this->query != false)
+                {
+                    if (count($params) > 0)
+                    {
+                        //Splat operator '...' splits array into individual function params
+                        $this->query->bind_param(...$params);
+                    }
+
+                    if ($this->query->execute())
+                    {
+                        $this->query_executed = true;
+                        $this->result = $this->query->get_result();
+                    }
+                    else
+                    {
+                        //Log error: DB_QUERY
+                        return null;
+                    }
+                }
+                else
+                {
+                    //Log error: DB_QUERY
+                    return null;
+                }
+            }
+            else
+            {
+                //Log error: GENERAL, "Query already executed."
+                return null;
+            }
+        }
+
+        private function get_heading_from_fieldname($fieldname)
+        {
+            //If $fieldname is a string
+            if (is_string($fieldname))
+            {
+                //If $fieldname is a key in Query::FIELD_HEADINGS
+                if (array_key_exists($fieldname, Query::FIELD_HEADINGS))
+                {
+                    return Query::FIELD_HEADINGS[$fieldname];
+                }
+                else
+                {
+                    //Log error, $fieldname is not a key in Query::FIELD_HEADINGS
+                    return $fieldname;
+                }
+            }
+            else
+            {
+                //Log error, $fieldname not passed as string
+            }
         }
 
         //Get result methods
 
-        private function get_result_as_plain($result)
+        public function get_result_as_plain()
         {
-
+            if ($this->query_executed)
+            {
+                return $this->result;
+            }
+            else
+            {
+                //Log error: get_result() attempted when query failed
+                return null;
+            } 
         }
 
-        private function get_result_as_assoc_array($result)
+        public function get_result_as_assoc_array()
         {
-
+            if ($this->query_executed)
+            {
+                return $this->result->fetch_all(MYSQL_ASSOC);
+            }
+            else
+            {
+                //Log error: get_result() attempted when query failed
+                return null;
+            } 
         }
 
-        private function get_result_as_indexed_array($result)
+        public function get_result_as_indexed_array()
         {
-
+            if ($this->query_executed)
+            {
+                return $this->result->fetch_all(MYSQL_NUM);
+            }
+            else
+            {
+                //Log error: get_result() attempted when query failed
+                return null;
+            } 
         }
 
-        private function get_result_as_string($result)
+        public function get_result_as_string()
         {
+            if ($this->query_executed)
+            {
+                $result_string = "";
+                $row_count = $this->result->num_rows;
 
+                if ($row_count > 0)
+                {
+                    $fields = $this->result->fetch_fields();
+
+                    while ($row = $this->result->fetch_assoc()) {
+                        $data_row = "";
+                        foreach ($fields as $field) {
+                            $data_row .= sprintf("%-20s", $row[$field->name]);
+                        }
+                        $result_string .= $data_row . "\n";
+                    }
+                }
+                return $result_string; 
+            }
+            else
+            {
+                //Log error: get_result() attempted when query failed
+                return null;
+            }
         }
 
-        private function get_result_as_HTML_table($result)
+        public function get_result_as_HTML_table()
         {
+            if ($this->query_executed)
+            {
+                $HTML_table = "";
 
+                //Fetch number of rows in $this->result
+                $row_count = $this->result->num_rows;
+                if ($row_count > 0)
+                {
+                    //fetch_fields() returns an array of objects, containing info about each field
+                    $fields = $this->result->fetch_fields();
+
+                    //$data = $this->result;
+
+                    $HTML_table .= '<table class="table table-striped table-bordered">';
+                    $HTML_table .= '<thead>';
+                    $HTML_table .= '<tr>';
+
+                    for ($x = 0; $x < count($fields); $x++)
+                    {
+                        $heading = $this->get_heading_from_fieldname($fields[$x]->name);
+
+                        $HTML_table .= '<th scope="col">' . $heading . '</th>';
+                    }
+
+                    $HTML_table .= '</thead>';
+                    $HTML_table .= '</tr>';
+
+                    $HTML_table .= '<tbody>';
+
+                    while ($row = $this->result->fetch_object()) 
+                    {
+                        $HTML_table .= '<tr>';
+        
+                        foreach ($fields as $field) 
+                        {
+                            $HTML_table .= '<td>' . $row->{$field->name} . '</td>';
+                        }
+        
+                        $HTML_table .= '</tr>';
+                    }
+
+                    $HTML_table .= '</tbody>';
+
+                    $HTML_table .= '</table>';
+
+                    return $HTML_table;
+                }
+            }
+            else
+            {
+                //Log error: get_result() attempted when query failed
+                return null;
+            }
         }
 
-        private function get_result_as_feed_item($result)
-        {
-
-        }
+        //private function get_result_as_feed_item(){}
     }
 
-
-    class Access_Level
+    class Client_Type
     {
-        public $system = null;
-        public $member_ID = null;
-        public $club_ID = null;
-        public $club_admin = false;
-        public $team_admin = [];
+        const USER = "User";
+        const SYSTEM = "System";
+    }
 
-        public function __construct($system = null, $member_ID = null, $club_ID = null)
+    class Query_Client
+    {
+        private Client_Type $client_type;
+        private $member_ID = null;
+        private $club_ID = null;
+
+        public function __construct($client_type, $member_ID = null)
         {
-            if 
+            $this->client_type = $client_type;
+
+            if ($this->client_type == Client_Type::USER)
+            {
+                if ($member_ID != null)
+                {
+                    $this->member_ID = $member_ID;
+
+                    //Set $club_ID using database query
+                }
+                else
+                {
+                    //Log error to DB: $member_ID not provided
+                }
+            }
         }
     }
 
@@ -83,27 +314,23 @@
 
     class Availability
     {
-        public function __construct(Access_Level $user)
+
+        public static function create_availability()
         {
 
         }
 
-        public function create_availability()
+        public static function read_availability()
         {
 
         }
 
-        public function read_availability()
-        {
-
-        }
-
-        public function update_availability()
+        public static function update_availability()
         {
             
         }
 
-        public function delete_availability()
+        public static function delete_availability()
         {
             
         }
@@ -113,36 +340,55 @@
 
     class Clubs
     {
-        public function __construct(Access_Level $user)
-        {
-
-        }
-
-        public function create_club()
+        public static function create_club()
         {
             //Only the system can create a new club
         }
 
-        public function read_club()
+        public static function read_club()
         {
             //read_club() returns different outputs depending on Access_Level
             //e.g. all data is returned to system and club admins, only some data returned to normal User
         }
 
-        public function update_club()
+        public static function update_club()
         {
             //Only the system and club admins can update a club
         }
 
-        public function delete_club()
+        public static function delete_club()
         {
             //Only the system can delete a club
         }
     }
 
-    class Log_Error
+    class Error_Types
     {
+        const DB_CONNECT = "Database Connection";
+        const DB_QUERY = "Database Query";
+        const USER = "User";
+    }
 
+    class Error_Handling
+    {
+        public static function handle_error($error_type, $error_code, $error_message)
+        {
+            if ($error_type == Error_Types::USER)
+            {
+                //Return error to user page
+            }
+            else
+            {
+                Error_Handling::log_error($error_type, $error_code, $error_message);
+            }
+        }
+
+        private static function log_error($error_type, $error_code, $error_message)
+        {
+            $db = Database_Connection::get_instance();
+
+
+        }
     }
 
     class Events
@@ -184,6 +430,5 @@
     {
 
     }
-
 
 ?>
