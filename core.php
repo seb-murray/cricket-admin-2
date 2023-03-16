@@ -70,12 +70,12 @@
         public $system = null;
         public $member_ID = null;
         public $club_ID = null;
+        public $club_admin = false;
+        public $team_admin = [];
 
-        public function __construct($member_ID, $club_ID, $system = null)
+        public function __construct($system = null, $member_ID = null, $club_ID = null)
         {
-            $this->system = $system;
-            $this->member_ID = $member_ID;
-            $this->club_ID = $club_ID;
+            if 
         }
     }
 
@@ -113,7 +113,31 @@
 
     class Clubs
     {
+        public function __construct(Access_Level $user)
+        {
 
+        }
+
+        public function create_club()
+        {
+            //Only the system can create a new club
+        }
+
+        public function read_club()
+        {
+            //read_club() returns different outputs depending on Access_Level
+            //e.g. all data is returned to system and club admins, only some data returned to normal User
+        }
+
+        public function update_club()
+        {
+            //Only the system and club admins can update a club
+        }
+
+        public function delete_club()
+        {
+            //Only the system can delete a club
+        }
     }
 
     class Log_Error
