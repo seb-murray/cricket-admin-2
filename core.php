@@ -81,14 +81,14 @@
             "team_member_ID" => "Team Member ID"
         ];
 
-        public function __construct(string $sql, array $params = [])
+        public function __construct(string $sql, array $params = [], string $param_types = "")
         {
             $this->database = Database_Connection::get_instance();
 
-            $this->execute_query($sql, $params);
+            $this->execute_query($sql, $params, $param_types);
         }
 
-        private function execute_query(string $sql, array $params)
+        private function execute_query(string $sql, array $params, string $param_types)
         {
             if ($this->query_executed == false)
             {
@@ -100,7 +100,7 @@
                     if (count($params) > 0)
                     {
                         //Splat operator '...' splits array into individual function params
-                        $this->query->bind_param(...$params);
+                        $this->query->bind_param($param_types, ...$params);
                     }
 
                     if ($this->query->execute())
@@ -286,7 +286,7 @@
 
     class Query_Client
     {
-        private Client_Type $client_type;
+        private $client_type;
         private $member_ID = null;
         private $club_ID = null;
 
@@ -305,6 +305,40 @@
                 else
                 {
                     //Log error to DB: $member_ID not provided
+                }
+            }
+        }
+
+        public function check_club_admin()
+        {
+            $admin = false;
+
+            if ($this->client_type == Client_Type::SYSTEM)
+            {
+                $admin = true;
+                return $admin;
+            }
+            else
+            {
+                $sql = 
+                "SELECT admin 
+                FROM `MEMBERS`
+                WHERE member_ID = ?;";
+
+                $params = [$this->member_ID];
+                $param_types = "i";
+
+                $is_club_admin = new Query($sql, $params, $param_types);
+                switch ($is_club_admin->get_result_as_string())
+                {
+                    case "0":
+                        return $admin;
+                    case "1":
+                        $admin = true;
+                        return $admin;
+                    default:
+                        //Log error - DB query error
+                        return null;
                 }
             }
         }
