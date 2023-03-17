@@ -401,9 +401,24 @@
     class Availability
     {
 
-        public static function create_availability()
+        public static function create_availability(Query_Client $client, int $team_member_ID, int $event_ID, int $available)
         {
+            if ($client->get_client_type() == Client_Type::USER)
+            {
+                //Check if team_member_ID belongs to the $client
+                //return null;
+            }
 
+            $sql = 
+                "INSERT INTO `AVAILABILITY` 
+                (`team_member_ID`, `event_ID`, `available`) 
+                VALUES (?, ?, ?);";
+
+            $params = [$team_member_ID, $event_ID, $available];
+            $param_types = "iii";
+
+            $create_availability = new Query($sql, $params, $param_types);
+            return $create_availability;
         }
 
         public static function read_availability()
