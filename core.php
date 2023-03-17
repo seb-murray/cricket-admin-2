@@ -225,9 +225,10 @@
                 $HTML_table = "";
 
                 //Fetch number of rows in $this->result
-                $row_count = $this->result->num_rows;
-                if ($row_count > 0)
+                if ($this->result->num_rows)
                 {
+                    $row_count = $this->result->num_rows;
+
                     //fetch_fields() returns an array of objects, containing info about each field
                     $fields = $this->result->fetch_fields();
 
@@ -406,29 +407,126 @@
             if ($client->get_client_type() == Client_Type::USER)
             {
                 //Check if team_member_ID belongs to the $client
-                //return null;
+                //If not return null;
+                
+                $sql = 
+                    "INSERT INTO `AVAILABILITY` 
+                    (`team_member_ID`, `event_ID`, `available`) 
+                    VALUES (?, ?, ?);";
+
+                $params = [$team_member_ID, $event_ID, $available];
+                $param_types = "iii";
+
+                $create_availability = new Query($sql, $params, $param_types);
+                return $create_availability;
             }
+            elseif ($client->get_client_type() == Client_Type::SYSTEM)
+            {
+                $sql = 
+                    "INSERT INTO `AVAILABILITY` 
+                    (`team_member_ID`, `event_ID`, `available`) 
+                    VALUES (?, ?, ?);";
 
-            $sql = 
-                "INSERT INTO `AVAILABILITY` 
-                (`team_member_ID`, `event_ID`, `available`) 
-                VALUES (?, ?, ?);";
+                $params = [$team_member_ID, $event_ID, $available];
+                $param_types = "iii";
 
-            $params = [$team_member_ID, $event_ID, $available];
-            $param_types = "iii";
-
-            $create_availability = new Query($sql, $params, $param_types);
-            return $create_availability;
+                $create_availability = new Query($sql, $params, $param_types);
+                return $create_availability;
+            }
+            else
+            {
+                //Log error: unrecognised Client_Type
+            }
         }
 
-        public static function read_availability()
+        public static function read_availability(Query_Client $client, int $availability_ID)
         {
+            if ($client->get_client_type() == Client_Type::USER)
+            {
+                //Check if event_ID from AVAILABILITY belongs to the $client's club
 
+                $sql = 
+                    "SELECT 
+                    CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name,     
+                    TEAMS.team_name, EVENTS.event_name,  
+                    CONCAT(DATE_FORMAT(event_date, '%d'), '/',
+                    DATE_FORMAT(event_date, '%m'), '/',
+                    DATE_FORMAT(event_date, '%Y')) AS event_date,
+                    CONCAT(DATE_FORMAT(event_meet_time, '%H'), ':',
+                    DATE_FORMAT(event_meet_time, '%i')) AS event_meet_time,
+                    CONCAT(DATE_FORMAT(event_start_time, '%H'), ':',
+                            DATE_FORMAT(event_start_time, '%i')) AS event_start_time, 
+                    AVAILABILITY.available
+                    FROM `AVAILABILITY` 
+                    JOIN `TEAM_MEMBERS` 
+                    ON AVAILABILITY.team_member_ID = TEAM_MEMBERS.team_member_ID 
+                    JOIN `MEMBERS` 
+                    ON TEAM_MEMBERS.member_ID = MEMBERS.member_ID 
+                    JOIN `TEAMS` 
+                    ON TEAM_MEMBERS.team_ID = TEAMS.team_ID 
+                    JOIN `EVENTS` 
+                    ON AVAILABILITY.event_ID = EVENTS.event_ID 
+                    WHERE (AVAILABILITY.availability_ID = ?);";
+
+                $params = [$availability_ID];
+                $param_types = "i";
+
+                $read_availability = new Query($sql, $params, $param_types);
+                return $read_availability;
+            }
+            elseif ($client->get_client_type() == Client_Type::SYSTEM)
+            {
+                $sql = 
+                    "SELECT * 
+                    FROM `AVAILABILITY` 
+                    WHERE (availability_ID = ?);";
+
+                $params = [$availability_ID];
+                $param_types = "i";
+
+                $read_availability = new Query($sql, $params, $param_types);
+                return $read_availability;
+            }
+            else
+            {
+                //Log error: unrecognised Client_Type
+            }
         }
 
-        public static function update_availability()
+        public static function update_availability(Query_Client $client, $availability_ID, $available)
         {
-            
+            if ($client->get_client_type() == Client_Type::USER)
+            {
+                //Check if availability belongs to the client
+
+                $sql = 
+                    "UPDATE `AVAILABILITY`
+                    SET `available` = ? 
+                    WHERE (availability_ID = ?);";
+
+                $params = [$available, $availability_ID];
+                $param_types = "ii";
+
+                $read_availability = new Query($sql, $params, $param_types);
+                return $read_availability;
+            }
+            elseif ($client->get_client_type() == Client_Type::SYSTEM)
+            {
+                $sql = 
+                    "UPDATE `AVAILABILITY`
+                    SET `available` = ? 
+                    WHERE (availability_ID = ?);";
+
+                $params = [$available, $availability_ID];
+                $param_types = "ii";
+
+                $read_availability = new Query($sql, $params, $param_types);
+                return $read_availability;
+            }
+            else
+            {
+                //Log error: unrecognised Client_Type
+            }
         }
 
         public static function delete_availability()
