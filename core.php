@@ -342,6 +342,43 @@
                 }
             }
         }
+
+        public function check_team_admin($team_ID)
+        {
+            $team_admin = false;
+
+            if ($this->client_type == Client_Type::SYSTEM)
+            {
+                $team_admin = true;
+                return $team_admin;
+            }
+            else
+            {
+                $sql = 
+                "SELECT ROLES.team_admin 
+                FROM `TEAM_MEMBERS`
+                JOIN `ROLES` 
+                ON TEAM_MEMBERS.role_ID = ROLES.role_ID 
+                WHERE member_ID = ? 
+                AND team_ID = ?;";
+
+                $params = [$this->member_ID, $team_ID];
+                $param_types = "ii";
+
+                $is_team_admin = new Query($sql, $params, $param_types);
+                switch ($is_team_admin->get_result_as_string())
+                {
+                    case "0":
+                        return $team_admin;
+                    case "1":
+                        $team_admin = true;
+                        return $team_admin;
+                    default:
+                        //Log error - DB query error
+                        return null;
+                }
+            }
+        }
     }
 
     //CRUD operations for each database class
