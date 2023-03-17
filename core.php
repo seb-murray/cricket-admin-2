@@ -379,6 +379,21 @@
                 }
             }
         }
+
+        public function get_client_type()
+        {
+            return $this->client_type;
+        }
+
+        public function get_member_ID()
+        {
+            return $this->member_ID;
+        }
+
+        public function get_club_ID()
+        {
+            return $this->club_ID;
+        }
     }
 
     //CRUD operations for each database class
