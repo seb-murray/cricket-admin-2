@@ -290,8 +290,10 @@
         private $client_type;
         private $member_ID = null;
         private $club_ID = null;
+        private static $system_instance = null;
+        private static $user_instance = null;
 
-        public function __construct($client_type, $member_ID = null)
+        private function __construct($client_type, $member_ID)
         {
             $this->client_type = $client_type;
 
@@ -301,12 +303,55 @@
                 {
                     $this->member_ID = $member_ID;
 
-                    //Set $club_ID using database query
+                    $club_ID = Clubs::read_club_from_member(Query_Client::get_system_instance(), $this->member_ID);
+
+                    if ($club_ID != false)
+                    {
+                        $club_ID = $club_ID->get_result_as_string();
+                        $club_ID = intval($club_ID);
+                        
+                    }
                 }
                 else
                 {
                     //Log error to DB: $member_ID not provided
                 }
+            }
+        }
+
+        public static function get_system_instance()
+        {
+            //Ensure user cannot get_system_instance() via injection
+
+            if (self::$system_instance == null)
+            {
+                self::$system_instance = new Query_Client(Client_Type::SYSTEM, null);
+            }
+
+            return self::$system_instance;
+        }
+
+        public static function get_user_instance(int $member_ID)
+        {
+            if (self::$user_instance == null)
+            {
+                if (Validation::member_ID_exists($member_ID))
+                {
+                    self::$user_instance = new Query_Client(Client_Type::USER, $member_ID);
+                    return self::$user_instance;
+                }
+                else
+                {
+                    //Log error: member_ID not found in MEMBERS
+                }
+            }
+            else if ($member_ID == self::$user_instance->get_member_ID())
+            {
+                return self::$user_instance;
+            }
+            else
+            {
+                //Log error: member_ID passed to get_user_instance doesn't match current user instance
             }
         }
 
@@ -401,6 +446,7 @@
 
     class Availability
     {
+        //CRUD SQL Functions
 
         public static function create_availability(Query_Client $client, int $team_member_ID, int $event_ID, int $available)
         {
@@ -493,7 +539,7 @@
             }
         }
 
-        public static function update_availability(Query_Client $client, $availability_ID, $available)
+        public static function update_availability(Query_Client $client, int $availability_ID, int $available)
         {
             if ($client->get_client_type() == Client_Type::USER)
             {
@@ -529,35 +575,224 @@
             }
         }
 
-        public static function delete_availability()
+        //delete_availability() does not exist, as once created they should not be removed
+
+        //Specialised SQL Functions
+
+        //$is_available is used to filter to only available/unavailable teammembers
+
+        public static function read_availabilities_from_event(Query_Client $client, $event_ID, $is_available)
         {
-            
+
+        }
+
+        public static function read_availabilities_from_member()
+        {
+
+        }
+
+        public static function read_availabilities_from_team()
+        {
+
+        }
+
+        public static function read_availabilities_from_club()
+        {
+
         }
     }
 
-    //CRUD functions repeated for all database classes
-
     class Clubs
     {
-        public static function create_club()
+        //CRUD SQL Functions
+
+        public static function create_club(Query_Client $client, string $club_name)
         {
             //Only the system can create a new club
+            if ($client->get_client_type() == Client_Type::SYSTEM)
+            {
+                $sql = 
+                    "INSERT INTO `CLUBS`
+                    (`club_name`) 
+                    VALUES (?);";
+
+                $params = [$club_name];
+                $param_types = "s";
+
+                $read_availability = new Query($sql, $params, $param_types);
+                return $read_availability;
+            }
+            elseif ($client->get_client_type() == Client_Type::USER)
+            {
+                //Log Error: Query_Client of Client_Type USER cannot create a club
+            }
+            else
+            {
+                //Log error: unrecognised Client_Type
+            }
         }
 
-        public static function read_club()
+        public static function read_club(Query_Client $client, int $club_ID)
         {
-            //read_club() returns different outputs depending on Access_Level
-            //e.g. all data is returned to system and club admins, only some data returned to normal User
+            //read_club() returns different outputs depending on Query_Client->Client_Type
+            if ($client->get_client_type() == Client_Type::USER)
+            {
+                //First check client is a member of the club_ID given
+                if ($club_ID == $client->get_club_ID())
+                {
+                    $sql = 
+                        "SELECT `club_name` 
+                        FROM `CLUBS`
+                        WHERE (`club_ID` = ?);";
+
+                    $params = [$club_ID];
+                    $param_types = "i";
+
+                    $read_availability = new Query($sql, $params, $param_types);
+                    return $read_availability;
+                }
+                else
+                {
+                    if (!Validation::club_ID_exists($club_ID))
+                    {
+                        //Log error: club_ID does not exist
+                    }
+                    else
+                    {
+                        //Log error: Query_Client not a member or club_ID passed into function
+                    }
+                }
+            }
+            elseif ($client->get_client_type() == Client_Type::SYSTEM)
+            {
+                $sql = 
+                        "SELECT * 
+                        FROM `CLUBS`
+                        WHERE (`club_ID` = ?);";
+
+                    $params = [$club_ID];
+                    $param_types = "i";
+
+                    $read_availability = new Query($sql, $params, $param_types);
+                    return $read_availability;
+            }
+            else
+            {
+                //Log error: unrecognised Client_Type
+            }
+
         }
 
-        public static function update_club()
+        public static function update_club(Query_Client $client, int $club_ID, string $club_name)
         {
             //Only the system and club admins can update a club
+
+            //read_club() returns different outputs depending on Query_Client->Client_Type
+            if ($client->get_client_type() == Client_Type::USER)
+            {
+                //First check client is a member of the club_ID given
+                if ($club_ID == $client->get_club_ID())
+                {
+                    if ($client->check_club_admin())
+                    {
+                        $sql = 
+                            "UPDATE `CLUBS` SET 
+                            `club_name` = ? 
+                            WHERE (`club_ID` = ?);";
+
+                        $params = [$club_name, $club_ID];
+                        $param_types = "si";
+
+                        $read_availability = new Query($sql, $params, $param_types);
+                        return $read_availability;
+                    }
+                    else
+                    {
+                        //Log error: Query_Client is not an admin of their club
+                    }
+                }
+                else
+                {
+                    if (!Validation::club_ID_exists($club_ID))
+                    {
+                        //Log error: club_ID does not exist
+                    }
+                    else
+                    {
+                        //Log error: Query_Client not a member or club_ID passed into function
+                    }
+                }
+            }
+            elseif ($client->get_client_type() == Client_Type::SYSTEM)
+            {
+                $sql = 
+                    "UPDATE `CLUBS` SET 
+                    `club_name` = ? 
+                    WHERE (`club_ID` = ?);";
+
+                $params = [$club_name, $club_ID];
+                $param_types = "si";
+
+                $read_availability = new Query($sql, $params, $param_types);
+                return $read_availability;
+            }
+            else
+            {
+                //Log error: unrecognised Client_Type
+            }
         }
 
-        public static function delete_club()
+        public static function delete_club(Query_Client $client, $club_ID)
         {
             //Only the system can delete a club
+            if ($client->get_client_type() == Client_Type::SYSTEM)
+            {
+                $sql = 
+                    "DELETE FROM `CLUBS` 
+                    WHERE (`club_ID` = ?);";
+
+                $params = [$club_ID];
+                $param_types = "i";
+
+                $read_availability = new Query($sql, $params, $param_types);
+                return $read_availability;
+            }
+            elseif ($client->get_client_type() == Client_Type::USER)
+            {
+                //Log error: USERS cannot delete clubs
+            }
+            else
+            {
+                //Log error: unrecognised Client_Type
+            }
+        }
+
+        //Specialised SQL Functions
+
+        public static function read_club_from_member(Query_Client $client, int $member_ID)
+        {
+            //Only the system can view external clubs
+            if ($client->get_client_type() == Client_Type::SYSTEM)
+            {
+                $sql = 
+                    "SELECT `club_ID` 
+                    FROM `MEMBERS` 
+                    WHERE (`member_ID` = ?);";
+
+                $params = [$member_ID];
+                $param_types = "i";
+
+                $read_availability = new Query($sql, $params, $param_types);
+                return $read_availability;
+            }
+            elseif ($client->get_client_type() == Client_Type::USER)
+            {
+                //Log error: USERS cannot view external clubs
+            }
+            else
+            {
+                //Log error: unrecognised Client_Type
+            }
         }
     }
 
@@ -628,6 +863,19 @@
     class Team_Members
     {
 
+    }
+
+    class Validation
+    {
+        //Function needs writing
+        public static function club_ID_exists($club_ID)
+        {
+            return true;
+        }
+        public static function member_ID_exists($member_ID)
+        {
+            return true;
+        }
     }
 
 ?>
