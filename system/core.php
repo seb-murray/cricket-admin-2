@@ -309,7 +309,7 @@
                     {
                         $club_ID = $club_ID->get_result_as_string();
                         $club_ID = intval($club_ID);
-                        
+
                     }
                 }
                 else
@@ -805,11 +805,16 @@
 
     class Error_Handling
     {
-        public static function handle_error($error_type, $error_code, $error_message)
+        public static function handle_error(string $error_type, int $error_code, string $error_message)
         {
             if ($error_type == Error_Types::USER)
             {
                 //Return error to user page
+            }
+            elseif ($error_type == Error_Types::DB_CONNECT)
+            {
+                //Find alternative error logging method
+                //Probably return to user
             }
             else
             {
@@ -819,9 +824,10 @@
 
         private static function log_error($error_type, $error_code, $error_message)
         {
-            $db = Database_Connection::get_instance();
-
-
+            $sql = 
+                "INSERT INTO `ERRORS` 
+                (`error_type`, `error_code`, `error_message`, `error_time`) 
+                VALUES (?, ?, ?, NOW());";
         }
     }
 
