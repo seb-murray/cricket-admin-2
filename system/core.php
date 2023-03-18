@@ -15,8 +15,9 @@
 
             $this->connection = new mysqli($servername, $username, $password, $database);
 
-            if ($this->connection->connect_error) {
-                //Log error: DB_CONNECT error
+            if ($this->connection->connect_error) 
+            {
+                Error_Handling::handle_error(Error_Types::DB_CONNECT, $this->connection->errno, $this->connection->error);
             }
         }
 
@@ -195,21 +196,28 @@
             if ($this->query_executed)
             {
                 $result_string = "";
-                $row_count = $this->result->num_rows;
 
-                if ($row_count > 0)
+                if ($row_count = $this->result->num_rows)
                 {
-                    $fields = $this->result->fetch_fields();
+                    if ($row_count > 0)
+                    {
+                        $fields = $this->result->fetch_fields();
 
-                    while ($row = $this->result->fetch_assoc()) {
-                        $data_row = "";
-                        foreach ($fields as $field) {
-                            $data_row .= sprintf("%-20s", $row[$field->name]);
+                        while ($row = $this->result->fetch_assoc()) {
+                            $data_row = "";
+                            foreach ($fields as $field) {
+                                $data_row .= sprintf("%-20s", $row[$field->name]);
+                            }
+                            $result_string .= $data_row . "\n";
                         }
-                        $result_string .= $data_row . "\n";
                     }
+                    return $result_string;
                 }
-                return $result_string; 
+                else
+                {
+                    //Log error: query returned no result
+                    return null;
+                }
             }
             else
             {
@@ -801,6 +809,7 @@
         const DB_CONNECT = "Database Connection";
         const DB_QUERY = "Database Query";
         const USER = "User";
+        const SYSTEM = "System";
     }
 
     class Error_Handling
@@ -828,6 +837,11 @@
                 "INSERT INTO `ERRORS` 
                 (`error_type`, `error_code`, `error_message`, `error_time`) 
                 VALUES (?, ?, ?, NOW());";
+
+            $params = [$error_type, $error_code, $error_message];
+            $param_types = "sis";
+
+            $log_error = new Query($sql, $params, $param_types);
         }
     }
 

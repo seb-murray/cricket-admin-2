@@ -18,7 +18,7 @@
 	<?php
 		include "core.php";
 
-		$test_error = Error_Handling::handle_error(Error_Types::USER, 3, )
+		Error_Handling::handle_error(Error_Types::DB_QUERY, 3, "Test");
 	?>
 </body>
 
