@@ -18,7 +18,10 @@
 	<?php
 		include "core.php";
 
-		Error_Handling::handle_error(Error_Types::DB_QUERY, 3, "Test");
+		$test_user = Query_Client::get_user_instance(2);
+
+		echo (Availability::read_availability($test_user, 5))->get_result_as_HTML_table();
+
 	?>
 </body>
 

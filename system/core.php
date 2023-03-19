@@ -9,15 +9,26 @@
         {
             //Database connection credentials
             $servername = "localhost";
-            $username = "wyvernsi_sebMurray";
+            $username = "wyvernsi_sebMuray";
             $password = "L0n3someP0l3cat";
             $database = "wyvernsi_sebM";
 
+            //Temporarily disable in-built PHP error reporting
+            //In real system this will always be off
+            error_reporting(0);
+            ini_set('display_errors', 0);
+
             $this->connection = new mysqli($servername, $username, $password, $database);
+
+            //Turn error reporting back on
+            //In real system this will always be off
+            error_reporting(E_ALL);
+            ini_set('display_errors', 1);
 
             if ($this->connection->connect_error) 
             {
                 Error_Handling::handle_error(Error_Types::DB_CONNECT, $this->connection->errno, $this->connection->error);
+                $this->connection = null;
             }
         }
 
@@ -86,7 +97,14 @@
         {
             $this->database = Database_Connection::get_instance();
 
-            $this->execute_query($sql, $params, $param_types);
+            if ($this->database != null)
+            {
+                $this->execute_query($sql, $params, $param_types);
+            }
+            else
+            {
+                Error_Handling::handle_error(Error_Types::DB_CONNECT, 0, "Query attempt when database connection failed.");
+            }
         }
 
         private function execute_query(string $sql, array $params, string $param_types)
@@ -311,13 +329,15 @@
                 {
                     $this->member_ID = $member_ID;
 
-                    $club_ID = Clubs::read_club_from_member(Query_Client::get_system_instance(), $this->member_ID);
+                    if (!($club_ID = Clubs::read_club_from_member(Query_Client::get_system_instance(), $this->member_ID)))
+                    {
+                        Error_Handling::handle_error(Error_Types::SYSTEM, 0, "read_club_from_member() failed when instantiating Query_Client.");
+                    }
 
                     if ($club_ID != false)
                     {
                         $club_ID = $club_ID->get_result_as_string();
                         $club_ID = intval($club_ID);
-
                     }
                 }
                 else
@@ -810,28 +830,39 @@
         const DB_QUERY = "Database Query";
         const USER = "User";
         const SYSTEM = "System";
+        const ERROR_FAILED = "Log Error Failed";
     }
 
     class Error_Handling
     {
         public static function handle_error(string $error_type, int $error_code, string $error_message)
         {
-            if ($error_type == Error_Types::USER)
+            switch ($error_type)
             {
-                //Return error to user page
-            }
-            elseif ($error_type == Error_Types::DB_CONNECT)
-            {
-                //Find alternative error logging method
-                //Probably return to user
-            }
-            else
-            {
-                Error_Handling::log_error($error_type, $error_code, $error_message);
+                case Error_Types::ERROR_FAILED:
+                    //Find alternative error logging method
+                    //Probably return to user
+                    echo("Error type: " . $error_type . ". Error code: " . strval($error_code) . ". Error message: " . $error_message . ".");
+                    break;
+                case Error_Types::DB_CONNECT:
+                    echo("Error type: " . $error_type . ". Error code: " . strval($error_code) . ". Error message: " . $error_message . ".");
+                    break;
+                case Error_Types::USER:
+                    //Return error to user page
+                    //Then also log to DB
+                    if (!(Error_Handling::log_error_to_DB($error_type, $error_code, $error_message)))
+                    {
+                        $failed_message = "Previous error log failed. Error type: " . $error_type . ". Error code: " . $error_code . ". Error message: " . $error_message . ".";
+                        Error_Handling::handle_error(Error_Types::ERROR_FAILED, -1, $failed_message);
+                    }
+                    break;
+                default:
+                Error_Handling::log_error_to_DB($error_type, $error_code, $error_message);
+                break;  
             }
         }
 
-        private static function log_error($error_type, $error_code, $error_message)
+        private static function log_error_to_DB($error_type, $error_code, $error_message)
         {
             $sql = 
                 "INSERT INTO `ERRORS` 
