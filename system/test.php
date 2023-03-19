@@ -18,10 +18,7 @@
 	<?php
 		include "core.php";
 
-		$test_user = Query_Client::get_user_instance(2);
-
-		echo (Availability::read_availability($test_user, 5))->get_result_as_HTML_table();
-
+		$user = Query_Client::get_user_instance(1);
 	?>
 </body>
 
