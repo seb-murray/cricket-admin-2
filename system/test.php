@@ -19,6 +19,17 @@
 		include "core.php";
 
 		$user = Query_Client::get_user_instance(1);
+
+		try
+		{
+			//$user->get_member_ID();
+		}
+		catch(Throwable $error)
+		{
+			new Error_Handler($error);
+		}
+
+
 	?>
 </body>
 
