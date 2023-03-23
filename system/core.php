@@ -150,6 +150,7 @@
 
                         $this->query_executed = true;
                         $this->result = $this->query->get_result();
+
                     }
                 }
                 else
@@ -160,6 +161,25 @@
             catch(Throwable $error)
             {
                 new Error_Handler($error);
+            }
+        }
+
+        public function check_null_result()
+        {
+            try
+            {
+                switch($this->result->num_rows)
+                {
+                    case 0:
+                        return true;
+                    default:
+                        return false;                        
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
             }
         }
 
@@ -212,7 +232,7 @@
             {
                 if ($this->query_executed)
                 {
-                    return $this->result->fetch_all(MYSQL_ASSOC);
+                    return $this->result->fetch_all(MYSQLI_ASSOC);
                 }
                 else
                 {
@@ -661,6 +681,48 @@
                             return $team_admin;
                         default:
                             throw new System_Error(0, "Query_Client::check_team_admin() result is not of type bool.", __LINE__);
+                    }
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
+
+        public function check_team_member($team_ID)
+        {
+            try
+            {
+                $team_member = false;
+
+                if ($this->client_type == Client_Type::SYSTEM)
+                {
+                    $team_member = true;
+                    return $team_member;
+                }
+                else
+                {
+                    $sql = 
+                        "SELECT DISTINCT `member_ID` 
+                        FROM `TEAM_MEMBERS`
+                        WHERE member_ID = ? 
+                        AND team_ID = ?;";
+
+                    $params = [$this->member_ID, $team_ID];
+                    $param_types = "ii";
+
+                    $is_team_member = new Query($sql, $params, $param_types);
+
+                    switch($is_team_member->check_null_result())
+                    {
+                        case false:
+                            return true;
+                        case true:
+                            return false;
+                        default:
+                            throw new System_Error(0, "Unrecognised response from check_null_result() in Query_Client::check_team_member().", __LINE__);
                     }
                 }
             }
@@ -1304,9 +1366,53 @@
             JOIN `EVENT_TYPES` 
                 ON EVENTS.event_type_ID = EVENT_TYPES.event_type_ID ";
 
-        public static function create_event()
+        public static function create_event(Query_Client $client, string $event_name, int $team_ID, int $event_type_ID, string $event_date, string $event_meet_time, string $event_start_time, string $event_description)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::USER)
+                {
+                    if ($client->check_team_admin($team_ID))
+                    {                      
+                        $sql = 
+                            "INSERT INTO `EVENTS` 
+                            (`event_name`, `event_team_ID`, `event_type_ID`, `event_date`, `event_meet_time`, `event_start_time`, `event_description`) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?);";
 
+                        $params = [$event_name, $team_ID, $event_type_ID, $event_date, $event_meet_time, $event_start_time, $event_description];
+                        $param_types = "siissss";
+
+                        $create_event = new Query($sql, $params, $param_types);
+                        return $create_event;
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "Query_Client passed as arg to Events::create_event() method does not have sufficient permissions to create an event.", __LINE__);
+                    }
+                }
+                elseif ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "INSERT INTO `EVENTS` 
+                        (`event_name`, `event_team_ID`, `event_type_ID`, `event_date`, `event_meet_time`, `event_start_time`, `event_description`) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?);";
+
+                    $params = [$event_name, $team_ID, $event_type_ID, $event_date, $event_meet_time, $event_start_time, $event_description];
+                    $param_types = "siissss";
+
+                    $create_event = new Query($sql, $params, $param_types);
+                    return $create_event;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg to Events::create_event() method has unrecognised Client_Type.", __LINE__);
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
         public static function read_event(Query_Client $client, int $event_ID)
@@ -1315,7 +1421,17 @@
             {
                 if ($client->get_client_type() == Client_Type::USER)
                 {
-                    //Check if event_ID belongs to the $client's club
+                    $sql = 
+                        "SELECT `event_team_ID` 
+                        FROM `EVENTS` 
+                        WHERE (event_ID = ?)";
+
+                    $params = [$event_ID];
+                    $param_types = "i";
+
+                    $check_team = new Query($sql, $params, $param_types);
+
+                    $result = $check_team->
 
                     $sql = 
                         self::USER_READ_SQL . 
@@ -1325,6 +1441,7 @@
                     $param_types = "i";
 
                     $read_event = new Query($sql, $params, $param_types);
+
                     return $read_event;
                 }
                 elseif ($client->get_client_type() == Client_Type::SYSTEM)
@@ -1552,6 +1669,70 @@
         public static function read_teams_from_club()
         {
 
+        }
+
+        public static function read_team_from_event()
+        {
+            
+        }
+
+        public static function read_team_ID_from_event(Query_Client $client, int $event_ID)
+        {
+            try
+            {
+                
+
+                if ($client->get_client_type() == Client_Type::USER or $client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    //First check client is a member of the club_ID given
+                    if ($club_ID == $client->get_club_ID())
+                    {
+                        $sql = 
+                            "SELECT `club_name` 
+                            FROM `CLUBS`
+                            WHERE (`club_ID` = ?);";
+
+                        $params = [$club_ID];
+                        $param_types = "i";
+
+                        $read_availability = new Query($sql, $params, $param_types);
+                        return $read_availability;
+                    }
+                    else
+                    {
+                        if (!Validation::club_ID_exists($club_ID))
+                        {
+                            throw new System_Error(0, "club_ID passed to read_club() does not exist in table CLUBS.", __LINE__);
+                        }
+                        else
+                        {
+                            throw new System_Error(0, "Query_Client passed as arg as an arg to read_club() is not a member of the club_ID passed as an arg.", __LINE__);
+                        }
+                    }
+                }
+                elseif ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                            "SELECT * 
+                            FROM `CLUBS`
+                            WHERE (`club_ID` = ?);";
+
+                        $params = [$club_ID];
+                        $param_types = "i";
+
+                        $read_availability = new Query($sql, $params, $param_types);
+                        return $read_availability;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg to read_club() has unrecognised Client_Type.", __LINE__);
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
     }

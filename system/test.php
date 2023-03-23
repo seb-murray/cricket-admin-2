@@ -19,9 +19,8 @@
 		include "core.php";
 
 		$user = Query_Client::get_user_instance(2);
-		$event = Events::read_event($user, 18);
 
-		echo $event->get_result_as_HTML_table();
+		Events::read_event($user, 18);
 
 		try
 		{
