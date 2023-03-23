@@ -775,12 +775,12 @@
                 else
                 {
                     throw new System_Error(0, "Query_Client passed as arg to create_availability() has unrecognised Client_Type.", __LINE__);
-                    return null;
                 }
             }
             catch(Throwable $error)
             {
                 new Error_Handler($error);
+                return null;
             }
         }
 
@@ -991,6 +991,11 @@
             }
         }
 
+        public static function read_availabilities_from_parent()
+        {
+
+        }
+
         public static function read_availabilities_from_team(Query_Client $client, $team_ID)
         {
             try
@@ -1073,17 +1078,16 @@
                 elseif ($client->get_client_type() == Client_Type::USER)
                 {
                     throw new System_Error(0, "Query_Client passed as arg to create_club() has Client_Type::USER. Only SYSTEM can create a club.", __LINE__);
-                    return null;
                 }
                 else
                 {
                     throw new System_Error(0, "Query_Client passed as arg to create_club() has unrecognised Client_Type.", __LINE__);
-                    return null;
                 }
             }
             catch(Throwable $error)
             {
                 new Error_Handler($error);
+                return null;
             }
         }
 
@@ -1113,12 +1117,10 @@
                         if (!Validation::club_ID_exists($club_ID))
                         {
                             throw new System_Error(0, "club_ID passed to read_club() does not exist in table CLUBS.", __LINE__);
-                            return null;
                         }
                         else
                         {
                             throw new System_Error(0, "Query_Client passed as arg as an arg to read_club() is not a member of the club_ID passed as an arg.", __LINE__);
-                            return null;
                         }
                     }
                 }
@@ -1138,12 +1140,12 @@
                 else
                 {
                     throw new System_Error(0, "Query_Client passed as arg to read_club() has unrecognised Client_Type.", __LINE__);
-                    return null;
                 }
             }
             catch(Throwable $error)
             {
                 new Error_Handler($error);
+                return null;
             }
         }
 
@@ -1175,7 +1177,6 @@
                         else
                         {
                             throw new System_Error(0, "Query_Client passed as arg to update_club() is not an admin of their club.", __LINE__);
-                            return null;
                         }
                     }
                     else
@@ -1183,12 +1184,10 @@
                         if (!Validation::club_ID_exists($club_ID))
                         {
                             throw new System_Error(0, "club_ID passed to update_club() does not exist in table CLUBS.", __LINE__);
-                            return null;
                         }
                         else
                         {
                             throw new System_Error(0, "Query_Client passed as arg as an arg to update_club() is not a member of the club_ID passed as an arg.", __LINE__);
-                            return null;
                         }
                     }
                 }
@@ -1208,12 +1207,12 @@
                 else
                 {
                     throw new System_Error(0, "Query_Client passed as arg to update_club() has unrecognised Client_Type.", __LINE__);
-                    return null;
                 }
             }
             catch(Throwable $error)
             {
                 new Error_Handler($error);
+                return null;
             }
         }
 
@@ -1237,17 +1236,16 @@
                 elseif ($client->get_client_type() == Client_Type::USER)
                 {
                     throw new System_Error(0, "Query_Client passed as arg to delete_club() has Client_Type::USER. Only SYSTEM can delete a club.", __LINE__);
-                    return null;
                 }
                 else
                 {
                     throw new System_Error(0, "Query_Client passed as arg to delete_club() has unrecognised Client_Type.", __LINE__);
-                    return null;
                 }
             }
             catch(Throwable $error)
             {
                 new Error_Handler($error);
+                return null;
             }
         }
 
@@ -1274,59 +1272,274 @@
                 elseif ($client->get_client_type() == Client_Type::USER)
                 {
                     throw new System_Error(0, "Attempt to call read_club_from_member() as Query_Client with Client_Type::USER. Users cannot view external clubs.", __LINE__);
-                    return null;
                 }
                 else
                 {
                     throw new System_Error(0, "Query_Client passed as arg to read_club_from_member() has unrecognised Client_Type.", __LINE__);
-                    return null;
                 }
             }
             catch(Throwable $error)
             {
                 new Error_Handler($error);
+                return null;
             }
         }
     }
 
     class Events
     {
+        public static function create_event()
+        {
 
+        }
+
+        public static function read_event(Query_Client $client, int $event_ID)
+        {
+
+        }
+
+        public static function update_event()
+        {
+
+        }
+
+        public static function delete_event()
+        {
+
+        }
+
+        //Specialised SQL functions
+
+        public static function read_events_from_club()
+        {
+
+        }
+
+        public static function read_events_from_team()
+        {
+
+        }
     }
 
     class Event_Types
     {
+        public static function create_event_type()
+        {
+
+        }
+
+        public static function read_event_type()
+        {
+
+        }
+
+        public static function update_event_type()
+        {
+
+        }
+
+        public static function delete_event_type()
+        {
+
+        }
+
+        //Custom SQL functions
+
+        public static function read_event_types_from_team()
+        {
+
+        }
 
     }
 
     class Guardianships
     {
+        public static function create_guardianship()
+        {
 
+        }
+
+        public static function read_guardianship()
+        {
+
+        }
+
+        public static function update_guardianship()
+        {
+
+        }
+
+        public static function delete_guardianship()
+        {
+
+        }
+
+        //Custom SQL functions
+
+        public static function read_parent_from_child()
+        {
+
+        }
+
+        public static function read_children_from_parent()
+        {
+
+        }
     }
 
     class Members
     {
+        public static function create_member()
+        {
+
+        }
+
+        public static function read_member()
+        {
+
+        }
+
+        public static function update_member()
+        {
+
+        }
+
+        public static function delete_member()
+        {
+
+        }
+
+        //Custom SQL functions
+
+        public static function read_members_from_club()
+        {
+
+        }
+
+        public static function read_members_from_team()
+        {
+
+        }
 
     }
 
     class Participants
     {
+        public static function create_participant()
+        {
 
+        }
+
+        public static function read_participant()
+        {
+
+        }
+
+        public static function update_participant()
+        {
+
+        }
+
+        public static function delete_participant()
+        {
+
+        }
+
+        //Custom SQL function
+
+        public static function read_participants_from_event()
+        {
+
+        }
+
+        public static function read_participants_from_parent()
+        {
+
+        }
+
+        public static function read_participants_from_member()
+        {
+
+        } 
+
+        public static function read_participants_from_team()
+        {
+
+        }
     }
 
     class Roles
     {
-
+        //Roles should not be read directly
+        //or created/updated/deleted from the PHP script
     }
 
     class Teams
     {
+        //Current project scope does not allow for user creation or deletion of clubs
+
+        public static function read_team()
+        {
+
+        }
+
+        public static function update_team()
+        {
+
+        }
+
+        //Custom SQL functions
+
+        public static function read_teams_from_member()
+        {
+
+        }
+
+        public static function read_teams_from_club()
+        {
+
+        }
 
     }
 
     class Team_Members
     {
+        public static function create_team_member()
+        {
 
+        }
+
+        public static function read_team_member()
+        {
+
+        }
+        
+        public static function update_team_member()
+        {
+
+        }
+
+        public static function delete_team_member()
+        {
+
+        }
+
+        //Custom SQL functions
+
+        public static function read_team_from_team_member()
+        {
+
+        }
+
+        public static function read_member_from_team_member()
+        {
+
+        }
+
+        public static function read_role_from_team_member()
+        {
+
+        }
     }
 
     class Validation
@@ -1336,8 +1549,27 @@
         {
             try
             {
+                $sql = 
+                    "SELECT `club_ID` 
+                    FROM `CLUBS` 
+                    WHERE `club_ID` = ?";
 
-                return true;
+                $params = [$club_ID];
+                $param_types = "i";
+
+                $check_club_ID = new Query($sql, $params, $param_types);
+
+                if($check_club_ID = $check_club_ID->get_result_as_indexed_array())
+                {
+                    if ($check_club_ID[0] == $club_ID)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
             }
             catch(Throwable $error)
             {
@@ -1351,17 +1583,17 @@
             {
                 $sql = 
                     "SELECT `member_ID` 
-                    FROM MEMBERS 
-                    WHERE member_ID = ?";
+                    FROM `MEMBERS` 
+                    WHERE `member_ID` = ?";
 
                 $params = [$member_ID];
                 $param_types = "i";
 
-                $read_availability = new Query($sql, $params, $param_types);
+                $check_member_ID = new Query($sql, $params, $param_types);
 
-                if($read_availability = $read_availability->get_result_as_indexed_array())
+                if($check_member_ID = $check_member_ID->get_result_as_indexed_array())
                 {
-                    if ($read_availability[0] == $member_ID)
+                    if ($check_member_ID[0] == $member_ID)
                     {
                         return true;
                     }
