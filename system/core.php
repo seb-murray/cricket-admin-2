@@ -103,7 +103,7 @@
             "role_ID" => "Role ID",
             "role_name" => "Role",
             "team_ID" => "Team ID",
-            "team_name" => "Teamname",
+            "team_name" => "Team",
             "team_nickname" => "Team Nickname",
             "team_member_ID" => "Team Member ID"
         ];
@@ -793,7 +793,7 @@
                     //Check if event_ID from AVAILABILITY belongs to the $client's club
 
                     $sql = 
-                        Availability::USER_READ_SQL . 
+                        self::USER_READ_SQL . 
                         "WHERE (AVAILABILITY.availability_ID = ?);";
 
                     $params = [$availability_ID];
@@ -805,7 +805,7 @@
                 elseif ($client->get_client_type() == Client_Type::SYSTEM)
                 {
                     $sql = 
-                        "SELECT AVAILABILITY.availability_ID 
+                        "SELECT AVAILABILITY.* 
                         FROM `AVAILABILITY` 
                         WHERE (availability_ID = ?);";
 
@@ -884,7 +884,7 @@
                 {
                     //Check if availability belongs to the client's club
 
-                    $sql = Availability::USER_READ_SQL;
+                    $sql = self::USER_READ_SQL;
                     
                     if ($is_available != null)
                     {
@@ -953,7 +953,7 @@
                     //Check if availability belongs to the client's club
 
                     $sql = 
-                        Availability::USER_READ_SQL . 
+                        self::USER_READ_SQL . 
                         "WHERE MEMBERS.member_ID = ?;";
 
                     $params = [$member_ID];
@@ -1005,7 +1005,7 @@
                     //Check if availability belongs to the client's club
 
                     $sql = 
-                        Availability::USER_READ_SQL . 
+                        self::USER_READ_SQL . 
                         "WHERE TEAMS.team_ID = ?;";
 
                     $params = [$team_ID];
@@ -1288,6 +1288,22 @@
 
     class Events
     {
+        const USER_READ_SQL = 
+            "SELECT EVENTS.event_name, EVENT_TYPES.event_type_name, 
+            CONCAT(DATE_FORMAT(event_date, '%d'), '/',
+                DATE_FORMAT(event_date, '%m'), '/',
+                DATE_FORMAT(event_date, '%Y')) AS event_date,
+            CONCAT(DATE_FORMAT(event_meet_time, '%H'), ':',
+                DATE_FORMAT(event_meet_time, '%i')) AS event_meet_time,
+            CONCAT(DATE_FORMAT(event_start_time, '%H'), ':',
+                    DATE_FORMAT(event_start_time, '%i')) AS event_start_time, 
+            TEAMS.team_name 
+            FROM `EVENTS` 
+            JOIN `TEAMS` 
+                ON EVENTS.event_team_ID = TEAMS.team_ID 
+            JOIN `EVENT_TYPES` 
+                ON EVENTS.event_type_ID = EVENT_TYPES.event_type_ID ";
+
         public static function create_event()
         {
 
@@ -1295,7 +1311,45 @@
 
         public static function read_event(Query_Client $client, int $event_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::USER)
+                {
+                    //Check if event_ID belongs to the $client's club
 
+                    $sql = 
+                        self::USER_READ_SQL . 
+                        "WHERE (EVENTS.event_ID = ?);";
+
+                    $params = [$event_ID];
+                    $param_types = "i";
+
+                    $read_event = new Query($sql, $params, $param_types);
+                    return $read_event;
+                }
+                elseif ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT EVENTS.* 
+                        FROM `EVENTS` 
+                        WHERE (`event_ID` = ?);";
+
+                    $params = [$event_ID];
+                    $param_types = "i";
+
+                    $read_event = new Query($sql, $params, $param_types);
+                    return $read_event;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg to read_event() has unrecognised Client_Type.", __LINE__);
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
         public static function update_event()
