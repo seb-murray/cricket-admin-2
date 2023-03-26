@@ -173,7 +173,7 @@
                     case 0:
                         return true;
                     default:
-                        return false;                        
+                        return false;                    
                 }
             }
             catch(Throwable $error)
@@ -212,7 +212,14 @@
             {
                 if ($this->query_executed)
                 {
-                    return $this->result;
+                    if (!$this->check_null_result())
+                    {
+                        return $this->result;
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "get_result_as_plain() attempted on SQL query with null result.", __LINE__);
+                    }
                 }
                 else
                 {
@@ -232,7 +239,14 @@
             {
                 if ($this->query_executed)
                 {
-                    return $this->result->fetch_all(MYSQLI_ASSOC);
+                    if (!$this->check_null_result())
+                    {
+                        return $this->result->fetch_all(MYSQLI_ASSOC);
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "get_result_as_assoc_array() attempted on SQL query with null result.", __LINE__);
+                    }
                 }
                 else
                 {
@@ -252,58 +266,18 @@
             {
                 if ($this->query_executed)
                 {
-                    return $this->result->fetch_array(MYSQLI_NUM);
+                    if (!$this->check_null_result())
+                    {
+                        return $this->result->fetch_array(MYSQLI_NUM);
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "get_result_as_indexed_array() attempted on SQL query with null result.", __LINE__);
+                    }
                 }
                 else
                 {
                     throw new System_Error(0, "get_result_as_indexed_array() attempted on failed SQL query.", __LINE__);
-                }
-            }
-            catch(Throwable $error)
-            {
-                new Error_Handler($error);
-                return null;
-            }
-        }
-
-        public function get_result_as_string()
-        {
-            try
-            {
-                if ($this->query_executed)
-                {
-                    $result_string = "";
-
-                    if ($row_count = $this->result->num_rows)
-                    {
-                        if ($row_count > 0)
-                        {
-                            $fields = $this->result->fetch_fields();
-
-                            while ($row = $this->result->fetch_assoc()) {
-                                $data_row = "";
-                                foreach ($fields as $field) {
-                                    $data_row .= sprintf("%-20s", $row[$field->name]);
-                                }
-                            }
-                        }
-                        if (strlen($result_string) > 0)
-                        {
-                            return $result_string;
-                        }
-                        else
-                        {
-                            return null;
-                        }
-                    }
-                    else
-                    {
-                        throw new System_Error(0, "get_result_as_string() attempted on query containing null result.", __LINE__);
-                    }
-                }
-                else
-                {
-                    throw new System_Error(0, "get_result_as_string() attempted on failed SQL query.", __LINE__);
                 }
             }
             catch(Throwable $error)
@@ -319,51 +293,58 @@
             {
                 if ($this->query_executed)
                 {
-                    $HTML_table = "";
-
-                    //Fetch number of rows in $this->result
-                    if ($this->result->num_rows)
+                    if (!$this->check_null_result())
                     {
-                        $row_count = $this->result->num_rows;
+                        $HTML_table = "";
 
-                        //fetch_fields() returns an array of objects, containing info about each field
-                        $fields = $this->result->fetch_fields();
-
-                        //$data = $this->result;
-
-                        $HTML_table .= '<table class="table table-striped table-bordered">';
-                        $HTML_table .= '<thead>';
-                        $HTML_table .= '<tr>';
-
-                        for ($x = 0; $x < count($fields); $x++)
+                        //Fetch number of rows in $this->result
+                        if ($this->result->num_rows)
                         {
-                            $heading = $this->get_heading_from_fieldname($fields[$x]->name);
+                            $row_count = $this->result->num_rows;
 
-                            $HTML_table .= '<th scope="col">' . $heading . '</th>';
-                        }
+                            //fetch_fields() returns an array of objects, containing info about each field
+                            $fields = $this->result->fetch_fields();
 
-                        $HTML_table .= '</thead>';
-                        $HTML_table .= '</tr>';
+                            //$data = $this->result;
 
-                        $HTML_table .= '<tbody>';
-
-                        while ($row = $this->result->fetch_object()) 
-                        {
+                            $HTML_table .= '<table class="table table-striped table-bordered">';
+                            $HTML_table .= '<thead>';
                             $HTML_table .= '<tr>';
-            
-                            foreach ($fields as $field) 
+
+                            for ($x = 0; $x < count($fields); $x++)
                             {
-                                $HTML_table .= '<td>' . $row->{$field->name} . '</td>';
+                                $heading = $this->get_heading_from_fieldname($fields[$x]->name);
+
+                                $HTML_table .= '<th scope="col">' . $heading . '</th>';
                             }
-            
+
+                            $HTML_table .= '</thead>';
                             $HTML_table .= '</tr>';
+
+                            $HTML_table .= '<tbody>';
+
+                            while ($row = $this->result->fetch_object()) 
+                            {
+                                $HTML_table .= '<tr>';
+                
+                                foreach ($fields as $field) 
+                                {
+                                    $HTML_table .= '<td>' . $row->{$field->name} . '</td>';
+                                }
+                
+                                $HTML_table .= '</tr>';
+                            }
+
+                            $HTML_table .= '</tbody>';
+
+                            $HTML_table .= '</table>';
+
+                            return $HTML_table;
                         }
-
-                        $HTML_table .= '</tbody>';
-
-                        $HTML_table .= '</table>';
-
-                        return $HTML_table;
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "get_result_as_HTML_table() attempted on SQL query with null result.", __LINE__);
                     }
                 }
                 else
@@ -533,11 +514,13 @@
 
                         $club_ID = Clubs::read_club_from_member(Query_Client::get_system_instance(), $this->member_ID);
 
-                        if ($club_ID != false)
+                        if (!$club_ID->check_null_result())
                         {
-                            $club_ID = $club_ID->get_result_as_string();
-                            $club_ID = intval($club_ID);
-
+                            $this->club_ID = $club_ID->get_result_as_indexed_array()[0];
+                        }
+                        else
+                        {
+                            throw new System_Error(0, "club_ID not found for given member_ID.", __LINE__);
                         }
                     }
                     else
@@ -549,7 +532,6 @@
             catch(Throwable $error)
             {
                 new Error_Handler($error);
-                $this->__destruct();
             }
         }
 
@@ -628,7 +610,7 @@
                     $param_types = "i";
 
                     $is_club_admin = new Query($sql, $params, $param_types);
-                    switch (intval($is_club_admin->get_result_as_string()))
+                    switch ($is_club_admin->get_result_as_indexed_array()[0])
                     {
                         case 0:
                             return $admin;
@@ -672,7 +654,7 @@
                     $param_types = "ii";
 
                     $is_team_admin = new Query($sql, $params, $param_types);
-                    switch (intval($is_team_admin->get_result_as_string()))
+                    switch ($is_team_admin->get_result_as_indexed_array()[0])
                     {
                         case 0:
                             return $team_admin;
@@ -797,7 +779,9 @@
             JOIN `EVENTS` 
                 ON AVAILABILITY.event_ID = EVENTS.event_ID 
             JOIN `TEAMS` 
-                ON EVENTS.event_team_ID = TEAMS.team_ID ";
+                ON EVENTS.event_team_ID = TEAMS.team_ID 
+            JOIN `CLUBS` 
+                ON MEMBERS.club_ID = CLUBS.club_ID ";
 
         //CRUD SQL Functions
 
@@ -1064,17 +1048,22 @@
             {
                 if ($client->get_client_type() == Client_Type::USER)
                 {
-                    //Check if availability belongs to the client's club
+                    if ($client->check_team_member($team_ID))
+                    {
+                        $sql = 
+                            self::USER_READ_SQL . 
+                            "WHERE TEAMS.team_ID = ?;";
 
-                    $sql = 
-                        self::USER_READ_SQL . 
-                        "WHERE TEAMS.team_ID = ?;";
+                        $params = [$team_ID];
+                        $param_types = "i";
 
-                    $params = [$team_ID];
-                    $param_types = "i";
-
-                    $read_availability = new Query($sql, $params, $param_types);
-                    return $read_availability;
+                        $read_availability = new Query($sql, $params, $param_types);
+                        return $read_availability;
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "Query_Client passed as arg to read_availabilities_from_team() is not a member of the team_ID passed as an arg.", __LINE__);
+                    }
                 }
                 elseif ($client->get_client_type() == Client_Type::SYSTEM)
                 {
@@ -1099,7 +1088,7 @@
                 }
                 else
                 {
-                    throw new System_Error(0, "Query_Client passed as arg to read_availabilities_from_member() has unrecognised Client_Type.", __LINE__);
+                    throw new System_Error(0, "Query_Client passed as arg to read_availabilities_from_team() has unrecognised Client_Type.", __LINE__);
                 }
             }
             catch(Throwable $error)
@@ -1109,9 +1098,62 @@
             }
         }
 
-        public static function read_availabilities_from_club()
+        public static function read_availabilities_from_club(Query_Client $client, int $club_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::USER)
+                {
+                    if ($client->get_club_ID() == $club_ID)
+                    {
+                        $sql = 
+                            self::USER_READ_SQL . 
+                            "WHERE CLUBS.club_ID = ?;";
 
+                        $params = [$club_ID];
+                        $param_types = "i";
+
+                        $read_availability = new Query($sql, $params, $param_types);
+                        return $read_availability;
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "Query_Client passed as arg to read_availabilities_from_team() is not a member of the club_ID passed as an arg.", __LINE__);
+                    }
+                }
+                elseif ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT AVAILABILITY.availability_ID 
+                        FROM `AVAILABILITY` 
+                        JOIN `TEAM_MEMBERS` 
+                            ON AVAILABILITY.team_member_ID = TEAM_MEMBERS.team_member_ID 
+                        JOIN `MEMBERS` 
+                            ON TEAM_MEMBERS.member_ID = MEMBERS.member_ID 
+                        JOIN `EVENTS` 
+                            ON AVAILABILITY.event_ID = EVENTS.event_ID 
+                        JOIN `TEAMS` 
+                            ON EVENTS.event_team_ID = TEAMS.team_ID 
+                        JOIN `CLUBS` 
+                            ON TEAMS.club_ID = CLUBS.club_ID 
+                        WHERE TEAMS.team_ID = ?;";
+
+                    $params = [$club_ID];
+                    $param_types = "i";
+
+                    $read_availability = new Query($sql, $params, $param_types);
+                    return $read_availability;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg to read_availabilities_from_club() has unrecognised Client_Type.", __LINE__);
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
     }
 
@@ -1333,7 +1375,23 @@
                 }
                 elseif ($client->get_client_type() == Client_Type::USER)
                 {
-                    throw new System_Error(0, "Attempt to call read_club_from_member() as Query_Client with Client_Type::USER. Users cannot view external clubs.", __LINE__);
+                    if ($client->get_member_ID() == $member_ID)
+                    {
+                        $sql = 
+                        "SELECT `club_ID` 
+                        FROM `MEMBERS` 
+                        WHERE (`member_ID` = ?);";
+
+                        $params = [$member_ID];
+                        $param_types = "i";
+
+                        $read_availability = new Query($sql, $params, $param_types);
+                        return $read_availability;
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "Attempt to read_club_from_member() from other member arg.", __LINE__);
+                    }
                 }
                 else
                 {
@@ -1675,13 +1733,11 @@
         {
             
         }
-
+        /*
         public static function read_team_ID_from_event(Query_Client $client, int $event_ID)
         {
             try
             {
-                
-
                 if ($client->get_client_type() == Client_Type::USER or $client->get_client_type() == Client_Type::SYSTEM)
                 {
                     //First check client is a member of the club_ID given
@@ -1734,6 +1790,7 @@
                 return null;
             }
         }
+        */
 
     }
 

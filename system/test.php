@@ -18,13 +18,11 @@
 	<?php
 		include "core.php";
 
-		$user = Query_Client::get_user_instance(2);
-
-		Events::read_event($user, 18);
-
 		try
 		{
-			
+			$user = Query_Client::get_user_instance(2);
+
+			echo (Availability::read_availabilities_from_club($user, 2))->get_result_as_HTML_table();
 		}
 		catch(Throwable $error)
 		{
