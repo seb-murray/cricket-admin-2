@@ -18,21 +18,23 @@
 	<?php
 		include "core.php";
 
-		$user = Query_Client::get_user_instance(2);
-		$event = Events::read_event($user, 18);
-
-		echo $event->get_result_as_HTML_table();
-
 		try
 		{
-			
+
+			$user = Query_Client::get_user_instance(2);
+
+			$create_event_type = Event_Types::create_event_type($user, "Testing", 2, "A", 0, 0, "Testing 2nd April");
+
+			$read_event_type = Event_Types::read_event_type($user, 2);
+
+			var_dump($read_event_type->check_null_result());
+
+			echo $read_event_type->get_result_as_HTML_table();
 		}
-		catch(Throwable $error)
+		catch (Throwable $error)
 		{
 			new Error_Handler($error);
 		}
-
-
 	?>
 </body>
 
