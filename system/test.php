@@ -22,8 +22,9 @@
 		{
 			$user = Query_Client::get_user_instance(2);
 
-			Event_Types::create_event_type($user, "Breakfast", 2, "A", 0, 0, "Breakfast in Venice.");
-			
+			$output = Events::read_events_from_member($user, 2);
+
+			echo $output?->get_result_as_HTML_table();
 		}
 		catch(Throwable $error)
 		{

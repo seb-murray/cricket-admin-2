@@ -534,13 +534,13 @@
 
                         $club_ID = Clubs::read_club_from_member(Query_Client::get_system_instance(), $this->member_ID);
 
-                        if (!$club_ID->check_null_result())
+                        if ($club_ID->check_null_result())
                         {
-                            $this->club_ID = $club_ID->get_result_as_indexed_array()[0][0];
+                            throw new System_Error(0, "club_ID not found from member_ID", __LINE__);
                         }
                         else
                         {
-                            throw new System_Error(0, "club_ID not found from member_ID", __LINE__);
+                            $this->club_ID = $club_ID->get_result_as_indexed_array()[0][0];
                         }
                     }
                     else
@@ -707,17 +707,17 @@
                     DATE_FORMAT(event_start_time, '%i')) AS event_start_time, 
             AVAILABILITY.available 
             FROM `AVAILABILITY` 
-            JOIN `TEAM_MEMBERS` 
+            INNER JOIN `TEAM_MEMBERS` 
                 ON AVAILABILITY.team_member_ID = TEAM_MEMBERS.team_member_ID 
-            JOIN `MEMBERS` 
+            INNER JOIN `MEMBERS` 
                 ON TEAM_MEMBERS.member_ID = MEMBERS.member_ID 
-            JOIN `EVENTS` 
+            INNER JOIN `EVENTS` 
                 ON AVAILABILITY.event_ID = EVENTS.event_ID 
-            JOIN `TEAMS` 
+            INNER JOIN `TEAMS` 
                 ON EVENTS.team_ID = TEAMS.team_ID 
-            JOIN `CLUBS` 
+            INNER JOIN `CLUBS` 
                 ON TEAMS.club_ID = CLUBS.club_ID 
-            JOIN `EVENT_TYPES` 
+            INNER JOIN `EVENT_TYPES` 
                 ON EVENTS.event_type_ID = EVENT_TYPES.event_type_ID ";
 
         //CRUD SQL Functions
@@ -820,9 +820,9 @@
 
                     $sql = 
                         "UPDATE `AVAILABILITY` 
-                        JOIN `TEAM_MEMBERS` 
+                        INNER JOIN `TEAM_MEMBERS` 
                             ON AVAILABILITY.team_member_ID = TEAM_MEMBERS.team_member_ID 
-                        JOIN `MEMBERS` 
+                        INNER JOIN `MEMBERS` 
                             ON TEAM_MEMBERS.member_ID = MEMBERS.member_ID 
                         SET `available` = ? 
                         WHERE (AVAILABILITY.availability_ID = ? AND MEMBERS.member_ID = ?);";
@@ -956,9 +956,9 @@
                     $sql = 
                         "SELECT AVAILABILITY.availability_ID 
                         FROM `AVAILABILITY` 
-                        JOIN `TEAM_MEMBERS` 
+                        INNER JOIN `TEAM_MEMBERS` 
                             ON AVAILABILITY.team_member_ID = TEAM_MEMBERS.team_member_ID 
-                        JOIN `MEMBERS` 
+                        INNER JOIN `MEMBERS` 
                             ON TEAM_MEMBERS.member_ID = MEMBERS.member_ID 
                         WHERE MEMBERS.member_ID = ?;";
 
@@ -1231,11 +1231,11 @@
                     DATE_FORMAT(event_start_time, '%i')) AS event_start_time, 
             TEAMS.team_name 
             FROM `EVENTS` 
-            JOIN `TEAMS` 
+            INNER JOIN `TEAMS` 
                 ON EVENTS.team_ID = TEAMS.team_ID 
-            JOIN `EVENT_TYPES` 
+            INNER JOIN `EVENT_TYPES` 
                 ON EVENTS.event_type_ID = EVENT_TYPES.event_type_ID 
-            JOIN `CLUBS` 
+            INNER JOIN `CLUBS` 
                 ON TEAMS.club_ID = CLUBS.club_ID ";
 
         public static function create_event(Query_Client $client, string $event_name, int $team_ID, int $event_type_ID, string $event_date, string $event_meet_time, string $event_start_time, string $event_description)
@@ -1344,10 +1344,10 @@
                 {
                     $sql = 
                         "UPDATE `EVENTS` 
-                        JOIN `TEAM_MEMBERS` 
+                        INNER JOIN `TEAM_MEMBERS` 
                             ON EVENTS.team_ID = TEAM_MEMBERS.team_ID 
                             AND TEAM_MEMBERS.member_ID = ? 
-                        JOIN `ROLES` 
+                        INNER JOIN `ROLES` 
                             ON TEAM_MEMBERS.role_ID = ROLES.role_ID 
                         SET `event_name` = ?, 
                         `event_type_ID` = ?, 
@@ -1404,7 +1404,7 @@
                 {
                     $sql = 
                         "DELETE FROM `EVENTS` 
-                        JOIN `TEAM_MEMBERS` 
+                        INNER JOIN `TEAM_MEMBERS` 
                             ON EVENTS.team_ID = TEAM_MEMBERS.team_ID 
                             AND TEAM_MEMBERS.member_ID = ? 
                         WHERE (EVENTS.event_ID = ? AND ROLES.team_admin = 1);";
@@ -1516,17 +1516,17 @@
                                 TEAMS.team_name, 
                                 CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name 
                                 FROM `EVENTS` 
-                                JOIN `TEAMS` 
+                                INNER JOIN `TEAMS` 
                                     ON EVENTS.team_ID = TEAMS.team_ID 
-                                JOIN `TEAM_MEMBERS` 
+                                INNER JOIN `TEAM_MEMBERS` 
                                     ON TEAMS.team_ID = TEAM_MEMBERS.team_ID 
-                                JOIN `MEMBERS` 
+                                INNER JOIN `MEMBERS` 
                                     ON TEAM_MEMBERS.member_ID = MEMBERS.member_ID 
                                 LEFT JOIN `GUARDIANSHIP` 
                                     ON MEMBERS.member_ID = GUARDIANSHIP.child_ID 
-                                JOIN `EVENT_TYPES` 
+                                INNER JOIN `EVENT_TYPES` 
                                     ON EVENTS.event_type_ID = EVENT_TYPES.event_type_ID 
-                                JOIN `CLUBS` 
+                                INNER JOIN `CLUBS` 
                                     ON TEAMS.club_ID = CLUBS.club_ID 
                                 WHERE (TEAM_MEMBERS.member_ID = ? OR GUARDIANSHIP.parent_ID = ?)
                                 ORDER BY EVENTS.event_date, EVENTS.event_meet_time ASC;";
@@ -1547,15 +1547,15 @@
                                         DATE_FORMAT(event_start_time, '%i')) AS event_start_time, 
                                 TEAMS.team_name 
                                 FROM `EVENTS` 
-                                JOIN `TEAMS` 
+                                INNER JOIN `TEAMS` 
                                     ON EVENTS.team_ID = TEAMS.team_ID 
-                                JOIN `TEAM_MEMBERS` 
+                                INNER JOIN `TEAM_MEMBERS` 
                                     ON TEAMS.team_ID = TEAM_MEMBERS.team_ID 
-                                JOIN `MEMBERS` 
+                                INNER JOIN `MEMBERS` 
                                     ON TEAM_MEMBERS.member_ID = MEMBERS.member_ID 
-                                JOIN `EVENT_TYPES` 
+                                INNER JOIN `EVENT_TYPES` 
                                     ON EVENTS.event_type_ID = EVENT_TYPES.event_type_ID 
-                                JOIN `CLUBS` 
+                                INNER JOIN `CLUBS` 
                                     ON TEAMS.club_ID = CLUBS.club_ID 
                                 WHERE (TEAM_MEMBERS.member_ID = ?)
                                 ORDER BY EVENTS.event_date, EVENTS.event_meet_time ASC;";
@@ -1573,11 +1573,11 @@
                     $sql = 
                         "SELECT EVENTS.event_ID 
                         FROM `EVENTS` 
-                        JOIN `TEAMS` 
+                        INNER JOIN `TEAMS` 
                             ON EVENTS.team_ID = TEAMS.team_ID 
-                        JOIN `TEAM_MEMBERS` 
+                        INNER JOIN `TEAM_MEMBERS` 
                             ON TEAMS.team_ID = TEAM_MEMBERS.team_ID 
-                        JOIN `MEMBERS` 
+                        INNER JOIN `MEMBERS` 
                             ON TEAM_MEMBERS.member_ID = MEMBERS.member_ID 
                         LEFT JOIN `GUARDIANSHIP` 
                             ON MEMBERS.member_ID = GUARDIANSHIP.child_ID 
@@ -1622,15 +1622,15 @@
                                     DATE_FORMAT(event_start_time, '%i')) AS event_start_time, 
                             TEAMS.team_name 
                             FROM `EVENTS` 
-                            JOIN `TEAMS` 
+                            INNER JOIN `TEAMS` 
                                 ON EVENTS.team_ID = TEAMS.team_ID 
-                            JOIN `TEAM_MEMBERS` 
+                            INNER JOIN `TEAM_MEMBERS` 
                                 ON TEAMS.team_ID = TEAM_MEMBERS.team_ID 
-                            JOIN `MEMBERS` 
+                            INNER JOIN `MEMBERS` 
                                 ON TEAM_MEMBERS.member_ID = MEMBERS.member_ID 
-                            JOIN `EVENT_TYPES` 
+                            INNER JOIN `EVENT_TYPES` 
                                 ON EVENTS.event_type_ID = EVENT_TYPES.event_type_ID 
-                            JOIN `CLUBS` 
+                            INNER JOIN `CLUBS` 
                                 ON TEAMS.club_ID = CLUBS.club_ID 
                             WHERE (TEAM_MEMBERS.member_ID = ?)
                             ORDER BY EVENTS.event_date, EVENTS.event_meet_time ASC;";
@@ -1647,9 +1647,9 @@
                     $sql = 
                         "SELECT EVENTS.event_ID 
                         FROM `EVENTS` 
-                        JOIN `TEAMS` 
+                        INNER JOIN `TEAMS` 
                             ON EVENTS.team_ID = TEAMS.team_ID 
-                        JOIN `TEAM_MEMBERS` 
+                        INNER JOIN `TEAM_MEMBERS` 
                             ON TEAMS.team_ID = TEAM_MEMBERS.team_ID 
                         WHERE (TEAM_MEMBERS.member_ID = ?)
                         ORDER BY EVENTS.event_date, EVENTS.event_meet_time ASC;";
@@ -1685,9 +1685,6 @@
             {
                 if ($client->get_client_type() == Client_Type::USER)
                 {
-                    var_dump($club_ID);
-                    var_dump($client->get_club_ID());
-
                     if ($club_ID == $client->get_club_ID())
                     {
                         if (Validation::check_club_admin($client, $club_ID))
@@ -1788,7 +1785,7 @@
                 {
                     $sql = 
                         "UPDATE `EVENT_TYPES` 
-                        JOIN `MEMBERS` 
+                        INNER JOIN `MEMBERS` 
                             ON EVENT_TYPES.club_ID = MEMBERS.club_ID 
                                 AND MEMBERS.member_ID = ? 
                         SET `event_type_name` = ?, 
@@ -1844,21 +1841,16 @@
                 {
                     $sql = 
                         "DELETE FROM `EVENT_TYPES` 
-                        JOIN `MEMBERS` 
+                        INNER JOIN `MEMBERS` 
                             ON EVENT_TYPES.club_ID = MEMBERS.club_ID 
                                 AND MEMBERS.member_ID = ? 
-                        SET `event_type_name` = ?, 
-                        `event_gender_restriction` = ?, 
-                        `min_age` = ?, 
-                        `max_age` = ?, 
-                        `event_type_description` = ? 
                         WHERE (EVENT_TYPES.event_type_ID = ? AND MEMBERS.admin = 1);";
 
                         //Currently only lets admins update, which is correct
                         //However if this is not the case there is no reporting back to user
 
-                    $params = [$client->get_member_ID(), $event_type_name, $event_gender_restriction, $min_age, $max_age, $event_type_description, $event_type_ID];
-                    $param_types = "issiisi";
+                    $params = [$client->get_member_ID(), $event_type_ID];
+                    $param_types = "ii";
 
                     $update_event = new Query($sql, $params, $param_types);
                     return $update_event;
@@ -2281,7 +2273,7 @@
                     $sql = 
                     "SELECT ROLES.team_admin 
                         FROM `TEAM_MEMBERS`
-                    JOIN `ROLES` 
+                    INNER JOIN `ROLES` 
                         ON TEAM_MEMBERS.role_ID = ROLES.role_ID 
                     WHERE member_ID = ? 
                         AND team_ID = ?;";
