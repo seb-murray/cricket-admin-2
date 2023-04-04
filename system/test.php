@@ -22,9 +22,7 @@
 		{
 			$user = Query_Client::get_user_instance(2);
 
-			$output = Events::read_events_from_member($user, 2);
-
-			echo $output?->get_result_as_HTML_table();
+			Event_Types::delete_event_type($user, 8);
 		}
 		catch(Throwable $error)
 		{

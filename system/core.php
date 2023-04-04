@@ -1406,7 +1406,7 @@
                         "DELETE FROM `EVENTS` 
                         INNER JOIN `TEAM_MEMBERS` 
                             ON EVENTS.team_ID = TEAM_MEMBERS.team_ID 
-                            AND TEAM_MEMBERS.member_ID = ? 
+                                AND TEAM_MEMBERS.member_ID = ? 
                         WHERE (EVENTS.event_ID = ? AND ROLES.team_admin = 1);";
 
                         //Currently only lets admins update, which is correct
@@ -1840,7 +1840,8 @@
                 if ($client->get_client_type() == Client_Type::USER)
                 {
                     $sql = 
-                        "DELETE FROM `EVENT_TYPES` 
+                        "DELETE `EVENT_TYPES` 
+                        FROM `EVENT_TYPES` 
                         INNER JOIN `MEMBERS` 
                             ON EVENT_TYPES.club_ID = MEMBERS.club_ID 
                                 AND MEMBERS.member_ID = ? 
