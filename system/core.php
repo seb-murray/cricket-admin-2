@@ -534,10 +534,13 @@
 
                         $club_ID = Clubs::read_club_from_member(Query_Client::get_system_instance(), $this->member_ID);
 
-                        if ($club_ID != false)
+                        if (!$club_ID->check_null_result())
                         {
-                            $club_ID = $club_ID->get_result_as_indexed_array();
-                            $club_ID = $club_ID[0][0];
+                            $this->club_ID = $club_ID->get_result_as_indexed_array()[0][0];
+                        }
+                        else
+                        {
+                            throw new System_Error(0, "club_ID not found from member_ID", __LINE__);
                         }
                     }
                     else
@@ -1682,6 +1685,9 @@
             {
                 if ($client->get_client_type() == Client_Type::USER)
                 {
+                    var_dump($club_ID);
+                    var_dump($client->get_club_ID());
+
                     if ($club_ID == $client->get_club_ID())
                     {
                         if (Validation::check_club_admin($client, $club_ID))
@@ -1830,9 +1836,60 @@
             }
         }
 
-        public static function delete_event_type()
+        public static function delete_event_type(Query_Client $client, $event_type_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::USER)
+                {
+                    $sql = 
+                        "DELETE FROM `EVENT_TYPES` 
+                        JOIN `MEMBERS` 
+                            ON EVENT_TYPES.club_ID = MEMBERS.club_ID 
+                                AND MEMBERS.member_ID = ? 
+                        SET `event_type_name` = ?, 
+                        `event_gender_restriction` = ?, 
+                        `min_age` = ?, 
+                        `max_age` = ?, 
+                        `event_type_description` = ? 
+                        WHERE (EVENT_TYPES.event_type_ID = ? AND MEMBERS.admin = 1);";
 
+                        //Currently only lets admins update, which is correct
+                        //However if this is not the case there is no reporting back to user
+
+                    $params = [$client->get_member_ID(), $event_type_name, $event_gender_restriction, $min_age, $max_age, $event_type_description, $event_type_ID];
+                    $param_types = "issiisi";
+
+                    $update_event = new Query($sql, $params, $param_types);
+                    return $update_event;
+                }
+                elseif ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "UPDATE `EVENT_TYPES` 
+                        SET `event_type_name` = ?, 
+                        `event_gender_restriction` = ?, 
+                        `min_age` = ?, 
+                        `max_age` = ?, 
+                        `event_type_description` = ? 
+                        WHERE (EVENT_TYPES.event_type_ID = ?);";
+
+                    $params = [$event_type_name, $event_gender_restriction, $min_age, $max_age, $event_type_description, $event_type_ID];
+                    $param_types = "ssiisi";
+
+                    $update_event = new Query($sql, $params, $param_types);
+                    return $update_event;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg to update_availability() has unrecognised Client_Type.", __LINE__);
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
         //Custom SQL functions
@@ -1889,7 +1946,7 @@
 
     class Guardianships
     {
-        public static function create_guardianship()
+        public static function create_guardianship(Query_Client $client, int $parent_ID, int $child_ID)
         {
 
         }

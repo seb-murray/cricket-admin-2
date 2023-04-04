@@ -22,7 +22,8 @@
 		{
 			$user = Query_Client::get_user_instance(2);
 
-			echo (Availability::read_availabilities_from_club($user, 2))->get_result_as_HTML_table();
+			Event_Types::create_event_type($user, "Breakfast", 2, "A", 0, 0, "Breakfast in Venice.");
+			
 		}
 		catch(Throwable $error)
 		{
