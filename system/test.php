@@ -20,15 +20,18 @@
 
 		try
 		{
-			$user = Query_Client::get_user_instance(2);
+			$user = Query_Client::get_user_instance(4);
+			$system = Query_Client::get_system_instance();
 
-			Event_Types::delete_event_type($user, 8);
+			$output = Members::delete_member($user, 6);
+			
+			//echo $output->get_result_as_HTML_table();
+			//var_dump(json_encode($output->get_result_as_assoc_array()[0]));
 		}
 		catch(Throwable $error)
 		{
 			new Error_Handler($error);
 		}
-
 
 	?>
 </body>

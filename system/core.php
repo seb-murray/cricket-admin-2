@@ -70,12 +70,12 @@
             "available" => "Available?",
             "COLUMN_NAME" => "Column Name",
             "club_ID" => "Club ID",
-            "club_name" => "Club Name",
+            "club_name" => "Club",
             "error_ID" => "Error ID",
             "error_message" => "Error Message",
             "error_time" => "Time",
             "event_ID" => "Event ID",
-            "event_name" => "Event Name",
+            "event_name" => "Event",
             "event_date" => "Date",
             "event_meet_time" => "Meet Time",
             "event_start_time" => "Start Time",
@@ -90,6 +90,7 @@
             "guardianship_ID" => "Guardianship ID",
             "parent_ID" => "Parent ID",
             "child_ID" => "Child ID",
+            "valid" => "Valid?", 
             "member_ID" => "Member ID",
             "member_fname" => "First Name",
             "member_lname" => "Last Name",
@@ -103,7 +104,7 @@
             "role_ID" => "Role ID",
             "role_name" => "Role",
             "team_name" => "Team",
-            "team_nickname" => "Team Nickname",
+            "team_nickname" => "Nickname",
             "team_member_ID" => "Team Member ID"
         ];
 
@@ -609,47 +610,6 @@
             }
         }
 
-        public function check_club_admin()
-        {
-            try
-            {
-                $admin = false;
-
-                if ($this->client_type == Client_Type::SYSTEM)
-                {
-                    $admin = true;
-                    return $admin;
-                }
-                else
-                {
-                    $sql = 
-                    "SELECT admin 
-                    FROM `MEMBERS`
-                    WHERE member_ID = ?;";
-
-                    $params = [$this->member_ID];
-                    $param_types = "i";
-
-                    $is_club_admin = new Query($sql, $params, $param_types);
-                    switch ($is_club_admin->get_result_as_indexed_array()[0][0])
-                    {
-                        case 0:
-                            return $admin;
-                        case 1:
-                            $admin = true;
-                            return $admin;
-                        default:
-                            throw new System_Error(0, "Query_Client::check_club_admin() result is not of type bool.", __LINE__);
-                    }
-                }
-            }
-            catch(Throwable $error)
-            {
-                new Error_Handler($error);
-                return null;
-            }
-        }
-
         public function get_client_type()
         {
             try
@@ -1093,7 +1053,7 @@
                     //First check client is a member of the club_ID given
                     if ($club_ID == $client->get_club_ID())
                     {
-                        if ($client->check_club_admin())
+                        if (Validation::check_club_admin($client, $client->get_member_ID()))
                         {
                             $sql = 
                                 "UPDATE `CLUBS` SET 
@@ -1403,7 +1363,8 @@
                 if ($client->get_client_type() == Client_Type::USER)
                 {
                     $sql = 
-                        "DELETE FROM `EVENTS` 
+                        "DELETE `EVENTS`
+                        FROM `EVENTS` 
                         INNER JOIN `TEAM_MEMBERS` 
                             ON EVENTS.team_ID = TEAM_MEMBERS.team_ID 
                                 AND TEAM_MEMBERS.member_ID = ? 
@@ -1859,23 +1820,18 @@
                 elseif ($client->get_client_type() == Client_Type::SYSTEM)
                 {
                     $sql = 
-                        "UPDATE `EVENT_TYPES` 
-                        SET `event_type_name` = ?, 
-                        `event_gender_restriction` = ?, 
-                        `min_age` = ?, 
-                        `max_age` = ?, 
-                        `event_type_description` = ? 
-                        WHERE (EVENT_TYPES.event_type_ID = ?);";
+                        "DELETE FROM `EVENT_TYPES` 
+                        WHERE (event_type_ID = ?);";
 
-                    $params = [$event_type_name, $event_gender_restriction, $min_age, $max_age, $event_type_description, $event_type_ID];
-                    $param_types = "ssiisi";
+                    $params = [$event_type_ID];
+                    $param_types = "i";
 
-                    $update_event = new Query($sql, $params, $param_types);
-                    return $update_event;
+                    $delete_event_type = new Query($sql, $params, $param_types);
+                    return $delete_event_type;
                 }
                 else
                 {
-                    throw new System_Error(0, "Query_Client passed as arg to update_availability() has unrecognised Client_Type.", __LINE__);
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised Client_Type.", __LINE__);
                 }
             }
             catch(Throwable $error)
@@ -1941,57 +1897,455 @@
     {
         public static function create_guardianship(Query_Client $client, int $parent_ID, int $child_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::USER)
+                {
+                    if (Validation::check_club_admin($client, $client->get_member_ID()))
+                    {
+                        $sql = 
+                            "INSERT INTO `GUARDIANSHIP` 
+                            (`parent_ID`, `child_ID`) 
+                            VALUES (?, ?);";
 
+                        $params = [$parent_ID, $child_ID];
+                        $param_types = "ii";
+
+                        $create_guardianship = new Query($sql, $params, $param_types);
+                        return $create_guardianship;
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "Client passed as arg is not an admin of their club.", __LINE__);
+                    }
+                }
+                elseif ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "INSERT INTO `GUARDIANSHIP` 
+                        (`parent_ID`, `child_ID`) 
+                        VALUES (?, ?);";
+
+                    $params = [$parent_ID, $child_ID];
+                    $param_types = "ii";
+
+                    $create_guardianship = new Query($sql, $params, $param_types);
+                    return $create_guardianship;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised Client_Type.", __LINE__);
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
-        public static function read_guardianship()
+        public static function read_guardianship(Query_Client $client, int $guardianship_ID)
         {
+            //Users do not need to be able to view guardianship pairs
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                            "SELECT * 
+                            FROM `GUARDIANSHIP` 
+                            WHERE (`guardianship_ID` = ?);";
 
+                        $params = [$guardianship_ID];
+                        $param_types = "i";
+
+                        $read_guardianship = new Query($sql, $params, $param_types);
+                        return $read_guardianship;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    throw new System_Error(0, "Query_Client of type USER does not have access to view guardianships.", __LINE__);
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
-        public static function update_guardianship()
+        public static function update_guardianship(Query_Client $client, int $guardianship_ID, int $valid)
         {
+            //Only system may need to update valid field in a GUARDIANSHIP
 
+            //Users do not need to be able to view guardianship pairs
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "UPDATE `GUARDIANSHIP` 
+                        SET `valid` = ? 
+                        WHERE (`guardianship_ID` = ?);";
+
+                    $params = [$valid, $guardianship_ID];
+                    $param_types = "ii";
+
+                    $read_guardianship = new Query($sql, $params, $param_types);
+                    return $read_guardianship;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    throw new System_Error(0, "Query_Client of type USER does not have access to update guardianships.", __LINE__);
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
-        public static function delete_guardianship()
+        public static function delete_guardianship(Query_Client $client, int $guardianship_ID)
         {
+            //Only system should be able to delete a guardianship
+            //In normal circumstances the guardianship should just be invalidated
 
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "DELETE FROM `GUARDIANSHIP` 
+                        WHERE (`guardianship_ID` = ?);";
+
+                    $params = [$guardianship_ID];
+                    $param_types = "i";
+
+                    $delete_guardianship = new Query($sql, $params, $param_types);
+                    return $delete_guardianship;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    throw new System_Error(0, "Query_Client of type USER does not have access to delete guardianships.", __LINE__);
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
         //Custom SQL functions
 
-        public static function read_parent_from_child()
+        public static function read_parent_from_child(Query_Client $client, int $child_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT `parent_ID` 
+                        FROM `GUARDIANSHIP` 
+                        WHERE (`child_ID` = ?);";
 
+                    $params = [$child_ID];
+                    $param_types = "i";
+
+                    $read_guardianship = new Query($sql, $params, $param_types);
+                    return $read_guardianship;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    $sql = 
+                        "SELECT CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name 
+                            FROM `GUARDIANSHIP` 
+                        INNER JOIN MEMBERS 
+                            ON GUARDIANSHIP.parent_ID = MEMBERS.member_ID 
+                        WHERE (GUARDIANSHIP.child_ID = ? AND MEMBERS.club_ID = ?);";
+
+                    $params = [$child_ID, $client->get_club_ID()];
+                    $param_types = "ii";
+
+                    $read_guardianship = new Query($sql, $params, $param_types);
+                    return $read_guardianship;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
-        public static function read_children_from_parent()
+        public static function read_children_from_parent(Query_Client $client, int $parent_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT `child_ID` 
+                        FROM `GUARDIANSHIP` 
+                        WHERE (`parent_ID` = ?);";
 
+                    $params = [$parent_ID];
+                    $param_types = "i";
+
+                    $read_guardianship = new Query($sql, $params, $param_types);
+                    return $read_guardianship;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    $sql = 
+                        "SELECT CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name 
+                            FROM `GUARDIANSHIP` 
+                        INNER JOIN MEMBERS 
+                            ON GUARDIANSHIP.child_ID = MEMBERS.member_ID 
+                        WHERE (GUARDIANSHIP.parent_ID = ? AND MEMBERS.club_ID = ?);";
+
+                    $params = [$parent_ID, $client->get_club_ID()];
+                    $param_types = "ii";
+
+                    $read_guardianship = new Query($sql, $params, $param_types);
+                    return $read_guardianship;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
     }
 
     class Members
     {
-        public static function create_member()
+        public static function create_member(Query_Client $client, int $club_ID, string $member_fname, string $member_lname, string $member_DOB, string $member_gender, string $member_email, string $hashed_member_password, int $admin = null)
         {
+            //Only system can create a member (through sign-up form)
 
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "INSERT INTO `MEMBERS` 
+                        (`club_ID`, `member_fname`, `member_lname`, `member_DOB`, `member_gender`, `member_email`, `member_password`, `admin`) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, IFNULL(?, 0));";
+
+                    $params = [$club_ID, $member_fname, $member_lname, $member_DOB, $member_gender, $member_email, $hashed_member_password, $admin];
+                    $param_types = "issssssi";
+
+                    $create_member = new Query($sql, $params, $param_types);
+                    return $create_member;
+                }
+                elseif ($client->get_client_type() == Client_Type::USER)
+                {
+                    throw new System_Error(0, "Query_Client of type USER does not have permission to create a member.", __LINE__);
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised Client_Type.", __LINE__);
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
-        public static function read_member()
+        public static function read_member(Query_Client $client, int $member_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT * 
+                        FROM `MEMBERS` 
+                        WHERE (`member_ID` = ?);";
 
+                    $params = [$member_ID];
+                    $param_types = "i";
+
+                    $read_member = new Query($sql, $params, $param_types);
+                    return $read_member;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    $sql = 
+                        "SELECT CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name, 
+                        CLUBS.club_name, MEMBERS.member_DOB, MEMBERS.member_gender, MEMBERS.member_email, MEMBERS.admin
+                        FROM `MEMBERS` 
+                        INNER JOIN `CLUBS` 
+                            ON MEMBERS.club_ID = CLUBS.club_ID
+                        WHERE (MEMBERS.member_ID = ? AND MEMBERS.club_ID = ?);";
+
+                    $params = [$member_ID, $client->get_club_ID()];
+                    $param_types = "ii";
+
+                    $read_member = new Query($sql, $params, $param_types);
+                    return $read_member;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
-        public static function update_member()
+        public static function update_member(Query_Client $client, int $member_ID, int $club_ID, string $member_fname, string $member_lname, string $member_DOB, string $member_gender, string $member_email, int $member_admin, string $hashed_member_password)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "UPDATE `MEMBERS` 
+                            SET `club_ID` = ?, 
+                            `member_fname` = ?, 
+                            `member_lname` = ?, 
+                            `member_DOB` = ?, 
+                            `member_gender` = ?, 
+                            `member_email` = ?, 
+                            `member_admin` = ?, 
+                            `member_password` = ? 
+                        WHERE (`member_ID` = ?);";
 
+                    $params = [$club_ID, $member_fname, $member_lname, $member_DOB, $member_gender, $member_email, $member_admin, $hashed_member_password, $member_ID];
+                    $param_types = "isssssisi";
+
+                    $update_member = new Query($sql, $params, $param_types);
+                    return $update_member;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    if ($client->get_member_ID() == $member_ID or Validation::check_guardianship_exists($client, $client->get_member_ID(), $member_ID))
+                    {
+                        //Can update email and password
+
+                        $sql = 
+                            "UPDATE `MEMBERS` 
+                                SET `member_fname` = ?, 
+                                `member_lname` = ?, 
+                                `member_DOB` = ?, 
+                                `member_gender` = ?, 
+                                `member_email` = ?, 
+                                `member_password` = ? 
+                            WHERE (`member_ID` = ?);";
+
+                        $params = [$member_fname, $member_lname, $member_DOB, $member_gender, $member_email, $hashed_member_password];
+                        $param_types = "ssssssi";
+
+                        $update_member = new Query($sql, $params, $param_types);
+                        return $update_member;
+                    }
+                    else if (Validation::check_club_admin($client, $client->get_member_ID()))
+                    {
+                        //Cannot update email and password
+
+                        $sql = 
+                            "UPDATE `MEMBERS` 
+                                SET `member_fname` = ?, 
+                                `member_lname` = ?, 
+                                `member_DOB` = ?, 
+                                `member_gender` = ? 
+                            WHERE (`member_ID` = ?);";
+
+                        $params = [$club_ID, $member_fname, $member_lname, $member_DOB, $member_gender, $member_email, $member_admin, $hashed_member_password];
+                        $param_types = "isssssis";
+
+                        $update_member = new Query($sql, $params, $param_types);
+                        return $update_member;
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "Client passed as arg does not have the permissions to update the member_ID.", __LINE__);
+                    }
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
-        public static function delete_member()
+        public static function delete_member(Query_Client $client, int $member_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::USER)
+                {
+                    $sql = 
+                        "DELETE FROM `MEMBERS` 
+                        WHERE (member_ID = ? AND (SELECT admin FROM MEMBERS WHERE member_ID = ?) = 1 AND club_ID = (SELECT club_ID FROM MEMBERS WHERE member_ID = ?));";
 
+                        //Currently only lets admins update, which is correct
+                        //However if this is not the case there is no reporting back to user
+
+                    $client_member_ID = $client->get_member_ID();
+
+                    $params = [$member_ID, $client_member_ID, $client_member_ID];
+                    $param_types = "iii";
+
+                    $delete_member = new Query($sql, $params, $param_types);
+                    return $delete_member;
+                }
+                elseif ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "DELETE FROM `MEMBERS` 
+                        WHERE (member_ID = ?);";
+
+                    $params = [$member_ID];
+                    $param_types = "ii";
+
+                    $delete_member = new Query($sql, $params, $param_types);
+                    return $delete_member;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised Client_Type.", __LINE__);
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
         //Custom SQL functions
@@ -2010,7 +2364,7 @@
 
     class Participants
     {
-        public static function create_participant()
+        public static function create_participant(Query_Client $client, )
         {
 
         }
@@ -2346,6 +2700,73 @@
                     {
                         throw new System_Error(0, "Client member_ID does not match the arg member_ID.", __LINE__);
                     }
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
+
+        public static function check_guardianship_exists(Query_Client $client, int $parent_ID, int $child_ID)
+        {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::USER)
+                {
+                    if ($parent_ID == $client->get_member_ID())
+                    {
+                        $sql = 
+                            "SELECT `guardianship_ID` 
+                            FROM `GUARDIANSHIP` 
+                            WHERE (`parent_ID` = ? AND `child_ID` = ?);";
+        
+                        $params = [$parent_ID, $child_ID];
+                        $param_types = "ii";
+        
+                        $check_is_parent = new Query($sql, $params, $param_types);
+        
+                        switch ($check_is_parent->check_null_result())
+                        {
+                            case true:
+                                return false;
+                            case false:
+                                return true;
+                            default:
+                                return null;
+                        }
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "Client member_ID does not match the arg member_ID.", __LINE__);
+                    }
+                }
+                else if ($client->get_client_type() == Client_Type::SYSTEM) 
+                {
+                    $sql = 
+                        "SELECT `guardianship_ID` 
+                        FROM `GUARDIANSHIP` 
+                        WHERE (`parent_ID` = ? AND `child_ID` = ?);";
+
+                    $params = [$parent_ID, $child_ID];
+                    $param_types = "ii";
+
+                    $check_is_parent = new Query($sql, $params, $param_types);
+
+                    switch ($check_is_parent->check_null_result())
+                    {
+                        case true:
+                            return false;
+                        case false:
+                            return true;
+                        default:
+                            return null;
+                    }
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised Client_Type.", __LINE__);
                 }
             }
             catch(Throwable $error)
