@@ -2350,28 +2350,224 @@
 
         //Custom SQL functions
 
-        public static function read_members_from_club()
+        public static function read_members_from_club(Query_Client $client, int $club_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT `member_ID` 
+                        FROM `MEMBERS` 
+                        WHERE (`club_ID` = ?);";
 
+                    $params = [$club_ID];
+                    $param_types = "i";
+
+                    $read_member = new Query($sql, $params, $param_types);
+                    return $read_member;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    if ($club_ID == $client->get_club_ID())
+                    {
+                        if (Validation::check_club_admin($client, $client->get_member_ID()))
+                        {
+                            $sql = 
+                                "SELECT CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name 
+                                FROM `MEMBERS` 
+                                WHERE (`club_ID` = ?);";
+
+                            $params = [$club_ID];
+                            $param_types = "i";
+
+                            $read_member = new Query($sql, $params, $param_types);
+                            return $read_member;
+                        }
+                        else
+                        {
+                            throw new System_Error(0, "Client is not an admin of the club passed as an arg.", __LINE__);
+                        }
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "Client is not a member of the club passed as an arg.", __LINE__);
+                    }
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
-        public static function read_members_from_team()
+        public static function read_members_from_team(Query_Client $client, int $team_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT `member_ID` 
+                        FROM `TEAM_MEMBERS` 
+                        WHERE (`team_ID` = ?);";
 
+                    $params = [$team_ID];
+                    $param_types = "i";
+
+                    $read_members = new Query($sql, $params, $param_types);
+                    return $read_members;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    if (Validation::check_team_member($client, $client->get_member_ID(), $team_ID))
+                    {
+                        $sql = 
+                            "SELECT CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name 
+                                FROM `MEMBERS` 
+                            INNER JOIN `TEAM_MEMBERS` 
+                                ON MEMBERS.member_ID = TEAM_MEMBERS.member_ID 
+                            WHERE (TEAM_MEMBERS.team_ID = ?);";
+
+                        $params = [$team_ID];
+                        $param_types = "i";
+
+                        $read_members = new Query($sql, $params, $param_types);
+                        return $read_members;
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "Client is not a member of the team passed as an arg.", __LINE__);
+                    }
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
     }
 
     class Participants
     {
-        public static function create_participant(Query_Client $client, )
+        public static function create_participant(Query_Client $client, int $event_ID, int $team_member_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "INSERT INTO `PARTICIPANTS` 
+                        (`event_ID`, `team_member_ID`) 
+                        VALUES (?, ?);";
 
+                    $params = [$event_ID, $team_member_ID];
+                    $param_types = "ii";
+
+                    $create_participant = new Query($sql, $params, $param_types);
+                    return $create_participant;
+                }
+                elseif ($client->get_client_type() == Client_Type::USER)
+                {
+                    $team_ID = Team_Members::read_team_from_team_member(Query_Client::get_system_instance(), $team_member_ID);
+
+                    if (Validation::check_team_admin($client, $client->get_member_ID(), $team_ID->get_result_as_indexed_array()[0][0]))
+                    {
+                        $sql = 
+                            "INSERT INTO `PARTICIPANTS` 
+                            (`event_ID`, `team_member_ID`) 
+                            VALUES (?, ?);";
+
+                        $params = [$event_ID, $team_member_ID];
+                        $param_types = "ii";
+
+                        $create_participant = new Query($sql, $params, $param_types);
+                        return $create_participant;
+                    }
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised Client_Type.", __LINE__);
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
-        public static function read_participant()
+        public static function read_participant(Query_Client $client, int $participant_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT * 
+                        FROM `PARTICIPANTS` 
+                        WHERE (`participant_ID` = ?);";
 
+                    $params = [$participant_ID];
+                    $param_types = "i";
+
+                    $read_participant = new Query($sql, $params, $param_types);
+                    return $read_participant;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    $system = Query_Client::get_system_instance();
+
+                    $check_team = Teams::read_team_from_participation($system, $participant_ID)->get_result_as_indexed_array();
+
+                    if (Validation::check_team_member($system, $client->get_member_ID(), $check_team[0][0]))
+                    {
+                        $sql = 
+                            "SELECT CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name, 
+                            EVENTS.event_name, EVENTS.event_date, EVENTS.event_meet_time, EVENTS.event_start_time, TEAMS.team_name
+                                FROM `PARTICIPANTS` 
+                            JOIN `TEAM_MEMBERS` 
+                                ON PARTICIPANTS.team_member_ID = TEAM_MEMBERS.team_member_ID 
+                            JOIN `MEMBERS` 
+                                ON TEAM_MEMBERS.member_ID = MEMBERS.member_ID 
+                            JOIN `TEAMS` 
+                                ON TEAM_MEMBERS.team_ID = TEAMS.team_ID 
+                            JOIN `EVENTS` 
+                                ON PARTICIPANTS.event_ID = EVENTS.event_ID 
+                            WHERE (PARTICIPANTS.participant_ID = ?);";
+
+                        $params = [$participant_ID];
+                        $param_types = "i";
+
+                        $read_participant = new Query($sql, $params, $param_types);
+                        return $read_participant;
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "Client is not a member of the team which the event belongs to.", __LINE__);
+                    }
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
         public static function update_participant()
@@ -2391,12 +2587,12 @@
 
         }
 
-        public static function read_participants_from_parent()
+        public static function read_participants_from_member()
         {
 
         }
 
-        public static function read_participants_from_member()
+        public static function read_participants_from_member_explicit()
         {
 
         } 
@@ -2431,12 +2627,57 @@
 
         public static function read_teams_from_member()
         {
-
+            
         }
 
         public static function read_teams_from_club()
         {
 
+        }
+
+        public static function read_team_from_event()
+        {
+
+        }
+
+        public static function read_team_from_availability()
+        {
+
+        }
+
+        public static function read_team_from_participation(Query_Client $client, int $participant_ID)
+        {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT EVENTS.team_ID 
+                            FROM `PARTICIPANTS` 
+                        INNER JOIN `EVENTS` 
+                            ON PARTICIPANTS.event_ID = EVENTS.event_ID 
+                        WHERE (PARTICIPANTS.participant_ID = ?);";
+
+                    $params = [$participant_ID];
+                    $param_types = "i";
+
+                    $read_team = new Query($sql, $params, $param_types);
+                    return $read_team;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    throw new System_Error(0, "Client of type USER does not have access to this function.", __LINE__);
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
     }
@@ -2465,9 +2706,48 @@
 
         //Custom SQL functions
 
-        public static function read_team_from_team_member()
+        public static function read_team_from_team_member(Query_Client $client, int $team_member_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT `team_ID` 
+                        FROM `TEAM_MEMBERS` 
+                        WHERE (`team_member_ID` = ?);";
 
+                    $params = [$team_member_ID];
+                    $param_types = "i";
+
+                    $read_team = new Query($sql, $params, $param_types);
+                    return $read_team;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    $sql = 
+                        "SELECT TEAMS.team_name`
+                            FROM `TEAM_MEMBERS` 
+                        INNER JOIN `TEAMS` 
+                            ON TEAM_MEMBERS.team_ID = TEAMS.team_ID 
+                        WHERE (`team_member_ID` = ?);";
+
+                    $params = [$team_member_ID];
+                    $param_types = "i";
+
+                    $read_team = new Query($sql, $params, $param_types);
+                    return $read_team;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
         }
 
         public static function read_member_from_team_member()
