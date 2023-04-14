@@ -525,53 +525,78 @@
             {
                 if ($this->query_success) 
                 {
-                    $row_count = $this->result->num_rows;
-                    $result_info = $this->result->fetch_fields();
-
-                    $fields = [];
-
-                    for ($x = 0; $x < count($result_info); $x++)
+                    if (!($this->check_null_result()))
                     {
-                        array_push($fields, $result_info[$x]->name);
-                    }
+                        $row_count = $this->result->num_rows;
+                        $result_info = $this->result->fetch_fields();
 
-                    $req_fields = ["availability_ID", "team_name", "event_name", "event_type_name", "event_date", "event_meet_time", "event_start_time", "event_location", "event_description", "available", "member_whole_name"];
+                        $fields = [];
 
-                    $array_diff = array_diff($req_fields, $fields);
-
-                    if (count($array_diff) == 0)
-                    {
-                        if ($row_count > 0) 
+                        for ($x = 0; $x < count($result_info); $x++)
                         {
-                            $result_assoc_array = self::get_result_as_assoc_array();
-                            $feed_items = [];
-
-
-                            $HTML_prefix = '<div class="container mt-4 mb-4"><div class="row"><div class="col-12 col-md-6 mx-auto">';
-                            $HTML_suffix = '</div></div></div>';
-
-                            for ($item_index = 0; $item_index < $row_count; $item_index++)
-                            {
-                                $HTML = $this->generate_HTML_feed_item($item_index, $result_assoc_array[$item_index]);
-
-                                if ($this->generate_HTML_feed_item($item_index, $result_assoc_array[$item_index]) != null)
-                                {
-                                    array_push($feed_items, $HTML);
-                                }
-                                else
-                                {
-                                    echo "hi";
-                                }
-                            } 
-
-                            $feed_items_HTML = implode("", $feed_items);
-
-                            $HTML_feed = $HTML_prefix . $feed_items_HTML . $HTML_suffix;
-
-                            $this->result->data_seek(0);
-
-                            return $HTML_feed;
+                            array_push($fields, $result_info[$x]->name);
                         }
+
+                        $req_fields = ["availability_ID", "team_name", "event_name", "event_type_name", "event_date", "event_meet_time", "event_start_time", "event_location", "event_description", "available", "member_whole_name"];
+
+                        $array_diff = array_diff($req_fields, $fields);
+
+                        if (count($array_diff) == 0)
+                        {
+                            if ($row_count > 0) 
+                            {
+                                $result_assoc_array = self::get_result_as_assoc_array();
+                                $feed_items = [];
+
+
+                                $HTML_prefix = '<div class="container mt-4 mb-4"><div class="row"><div class="col-12 col-md-6 mx-auto">';
+                                $HTML_suffix = '</div></div></div>';
+
+                                for ($item_index = 0; $item_index < $row_count; $item_index++)
+                                {
+                                    $HTML = $this->generate_HTML_feed_item($item_index, $result_assoc_array[$item_index]);
+
+                                    if ($this->generate_HTML_feed_item($item_index, $result_assoc_array[$item_index]) != null)
+                                    {
+                                        array_push($feed_items, $HTML);
+                                    }
+                                    else
+                                    {
+                                        echo "hi";
+                                    }
+                                } 
+
+                                $feed_items_HTML = implode("", $feed_items);
+
+                                $HTML_feed = $HTML_prefix . $feed_items_HTML . $HTML_suffix;
+
+                                $this->result->data_seek(0);
+
+                                return $HTML_feed;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        return '<div class="container d-flex align-items-center" style="max-width: 600px; height: 100vh;">
+                        <div class="shadow-lg p-3 m-4 bg-white rounded">
+                        <div class="row">
+                            <div class="col d-flex justify-content-center m-4">
+                                <div class="d-flex align-items-start me-3 mt-0">
+                                    <img src="https://wyvernsite.net/sebMurray/system/assets/grimacing.png" alt="Description"
+                                        style="width: auto; height: 6vh;">
+                                </div>
+                                <div class="d-flex flex-column align-items-center">
+                                    <div class="text-center text-part-1">
+                                        <h1 class="fw-bold text-dark mb-0"
+                                            style="line-height: 1.2em; font-size: 5vh;">Sorry!</h1>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                          <p class="text-center m-4 mt-2 text-muted fs-4 fw-normal lh-sm">When a club admin adds you to a team, upcoming events will show here.</p>
+                        </div>
+                      </div>';
                     }
                 }
             } 
@@ -685,7 +710,7 @@
             }
         }
 
-        public function check_result_success()
+        public function check_query_success()
         {
             try
             {
@@ -1623,6 +1648,39 @@
                 else
                 {
                     throw new System_Error(0, "Query_Client passed as arg to read_club_from_team_member() has unrecognised Client_Type.", __LINE__);
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
+
+        public static function read_all_clubs(Query_Client $client)
+        {
+            try
+            {
+                //read_club() returns different outputs depending on Query_Client->Client_Type
+                if ($client->get_client_type() == Client_Type::USER)
+                {
+                    throw new System_Error(0, "Client does not have sufficient permissions to perform this action.", __LINE__);
+                }
+                elseif ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT * 
+                        FROM `CLUBS`;";
+
+                    $params = [];
+                    $param_types = "";
+
+                    $read_clubs = new Query($sql, $params, $param_types);
+                    return $read_clubs;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg to read_club() has unrecognised Client_Type.", __LINE__);
                 }
             }
             catch(Throwable $error)

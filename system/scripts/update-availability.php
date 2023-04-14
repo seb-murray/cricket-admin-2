@@ -14,7 +14,7 @@
 
         $update_availability = Availability::update_availability($system, $availability_ID, $available);
 
-        switch ($update_availability->check_result_success())
+        switch ($update_availability->check_query_success())
         {
             case true:
                 echo "1";

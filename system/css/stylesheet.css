@@ -57,3 +57,30 @@
     width: 75%;
 }
 
+.btn-primary {
+    background-color: var(--blue);
+}
+
+.alert {
+    height: 40px;
+    line-height:40px;
+    padding:0px 15px;
+}
+
+.cricket-bg {
+    background-image: url("assets/cricket-bg.jpg");
+    filter: blur(10px);
+    -webkit-filter: blur(10px);
+
+    height: 100%;
+    min-height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: -1;
+
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
