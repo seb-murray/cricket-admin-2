@@ -87,13 +87,13 @@
             </li>
         </ul>
         <form class="d-flex" action="javascript:;" onsubmit="sign_out()">
-            <button class="btn btn-outline-danger" type="submit">Log out</button>
+            <button class="btn btn-outline-danger" type="submit">Sign out</button>
         </form>
         </div>
     </div>
     </nav>
 
-    <div class="container d-flex align-items-center bg-transparent" style="max-width: 600px; height: 100vh;">
+    <div class="container d-flex align-items-center bg-transparent" style="max-width: 700px; height: 90vh;">
         <div class="shadow-lg p-3 m-4 bg-white rounded">
         <div class="row">
             <div class="col d-flex justify-content-center m-4">

@@ -25,6 +25,7 @@
             $_SESSION['club_ID'] = $club_ID_encrypted;
             $_SESSION['member_fname'] = $member_info['member_fname'];
             $_SESSION['member_lname'] = $member_info['member_lname'];
+            $_SESSION['club_admin'] = $member_info['admin'];
 
             echo json_encode(["success" => 1]);
 

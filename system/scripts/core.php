@@ -537,7 +537,7 @@
                             array_push($fields, $result_info[$x]->name);
                         }
 
-                        $req_fields = ["availability_ID", "team_name", "event_name", "event_type_name", "event_date", "event_meet_time", "event_start_time", "event_location", "event_description", "available", "member_whole_name"];
+                        $req_fields = ["availability_ID", "team_name", "event_name", "event_type_name", "event_date", "event_meet_time", "event_start_time", "event_location", "event_description", "available", "member_whole_name", "member_ID", "team_ID"];
 
                         $array_diff = array_diff($req_fields, $fields);
 
@@ -547,10 +547,6 @@
                             {
                                 $result_assoc_array = self::get_result_as_assoc_array();
                                 $feed_items = [];
-
-
-                                $HTML_prefix = '<div class="container mt-4 mb-4"><div class="row"><div class="col-12 col-md-6 mx-auto">';
-                                $HTML_suffix = '</div></div></div>';
 
                                 for ($item_index = 0; $item_index < $row_count; $item_index++)
                                 {
@@ -566,9 +562,7 @@
                                     }
                                 } 
 
-                                $feed_items_HTML = implode("", $feed_items);
-
-                                $HTML_feed = $HTML_prefix . $feed_items_HTML . $HTML_suffix;
+                                $HTML_feed = implode("", $feed_items);
 
                                 $this->result->data_seek(0);
 
@@ -578,6 +572,8 @@
                     }
                     else
                     {
+                        $system = Query_Client::get_system_instance();
+
                         return '<div class="container d-flex align-items-center" style="max-width: 600px; height: 100vh;">
                         <div class="shadow-lg p-3 m-4 bg-white rounded">
                         <div class="row">
@@ -622,6 +618,9 @@
                 $event_description = $feed_data["event_description"];
                 $member_whole_name = $feed_data["member_whole_name"];
                 $team_name = $feed_data["team_name"];
+
+                $encrypted_team_ID = System_Utility::encrypt($feed_data["team_ID"]);
+
                 
 
                 switch ($feed_data["available"])
@@ -636,7 +635,7 @@
                         break;
                 }
 
-                $feed_item_HTML = "<div class='feed-item' id='feed_item_$item_index' availability_ID='$encrypted_availability_ID'>";
+                $feed_item_HTML = "<div class='feed-item' id='feed_item_$item_index' availability_ID='$encrypted_availability_ID' team_ID='$encrypted_team_ID'>";
 
                 $feed_item_HTML .= "<h3 class='mb-0' id='event_name_$item_index' availability_ID='$encrypted_availability_ID'>$event_name</h3>";
                 $feed_item_HTML .= "<p id='event_type_name_$item_index' availability_ID='$encrypted_availability_ID' class='text-muted mb-3'>$event_type_name</p>";
@@ -1984,7 +1983,7 @@
                                 DATE_FORMAT(event_meet_time, '%i')) AS event_meet_time,
                             CONCAT(DATE_FORMAT(event_start_time, '%H'), ':',
                                     DATE_FORMAT(event_start_time, '%i')) AS event_start_time, 
-                            TEAMS.team_name, AVAILABILITY.availability_ID, AVAILABILITY.available,  
+                            TEAMS.team_name, AVAILABILITY.availability_ID, AVAILABILITY.available, TEAMS.team_ID, MEMBERS.member_ID, 
                             CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name 
                             FROM `EVENTS` 
                             INNER JOIN `TEAMS` 
@@ -2963,7 +2962,7 @@
                 if ($client->get_client_type() == Client_Type::SYSTEM)
                 {
                     $sql = 
-                        "SELECT `member_ID`, `club_ID`, `member_fname`, `member_lname` 
+                        "SELECT `member_ID`, `club_ID`, `member_fname`, `member_lname`, `admin` 
                         FROM `MEMBERS` 
                         WHERE (`member_email` = ? and `member_password` = ?);";
 
@@ -4000,6 +3999,38 @@
             }
         }
 
+        public static function read_team_members_from_member(Query_Client $client, int $member_ID)
+        {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT * 
+                        FROM `TEAM_MEMBERS` 
+                        WHERE (`member_ID` = ?);";
+
+                    $params = [$member_ID];
+                    $param_types = "i";
+
+                    $read_team_members = new Query($sql, $params, $param_types);
+                    return $read_team_members;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    throw new System_Error(0, "Client does not have the sufficient permissions to perform this action.", __LINE__);
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
         public static function read_member_from_team_member(Query_Client $client, int $team_member_ID)
         {
             try

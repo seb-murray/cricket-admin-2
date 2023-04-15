@@ -2,7 +2,7 @@ async function server_encrypt(data) {
 	try {
 		data = String(data);
 
-		let url = 'scripts/encrypt.php';
+		let url = 'https://wyvernsite.net/sebMurray/system/scripts/encrypt.php';
 
 		let form_data = new FormData();
 		form_data.append("data", data);
@@ -20,7 +20,7 @@ async function server_encrypt(data) {
 }
 
 async function log_error_to_db(Error) {
-	let url = "scripts/log-clientside-error.php"
+	let url = "https://wyvernsite.net/sebMurray/system/scripts/log-clientside-error.php"
 
 	let error_code = -1;
 	let error_message = Error.message;
@@ -45,7 +45,7 @@ async function sign_up()
 	try 
 	{
 		console.log("Hey there...")
-		let url = 'scripts/sign-up-script.php';
+		let url = 'https://wyvernsite.net/sebMurray/system/scripts/sign-up-script.php';
 
 		let member_fname = document.getElementById("member_fname").value;
 		let member_lname = document.getElementById("member_lname").value;

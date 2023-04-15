@@ -4,7 +4,7 @@ async function server_encrypt(data)
     {
         data = String(data);
 
-        let url = 'scripts/encrypt.php';
+        let url = 'https://wyvernsite.net/sebMurray/system/scripts/encrypt.php';
 
         let form_data = new FormData();
         form_data.append("data", data);
@@ -24,7 +24,7 @@ async function server_encrypt(data)
 
 async function log_error_to_db(Error)
 {
-    let url = "scripts/log-clientside-error.php"
+    let url = "https://wyvernsite.net/sebMurray/system/scripts/log-clientside-error.php"
 
     let error_code = -1;
     let error_message = Error.message;
@@ -46,7 +46,7 @@ async function log_error_to_db(Error)
 async function update_availability(event)
 {
     
-    let url = 'scripts/update-availability.php';
+    let url = 'https://wyvernsite.net/sebMurray/system/scripts/update-availability.php';
 
     let element = event.target;
 
@@ -103,9 +103,34 @@ async function update_availability(event)
 
 async function sign_out()
 {
-    let url = 'scripts/sign-out-script.php';
+    let url = 'https://wyvernsite.net/sebMurray/system/scripts/sign-out-script.php';
 
     let response = await fetch(url, { method: 'POST' });
 
     window.location.replace("https://wyvernsite.net/sebMurray/system/sign-in.html");
+}
+
+function sort_teams()
+{
+    team_selector = document.getElementById('team-filter');
+
+    team = team_selector.value;
+
+    const events = document.querySelectorAll('.feed-item');
+
+    for (let i = 0; i < events.length; i++)
+    {
+        const event = events[i];
+
+        let event_team_ID = event.getAttribute('team_ID');
+
+        if ((team_selector.value == 'all') || (event_team_ID == team_selector.value))
+        {
+            event.style.display = 'block';
+        }
+        else
+        {
+            event.style.display = 'none';
+        }
+    }
 }

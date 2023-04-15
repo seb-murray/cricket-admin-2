@@ -35,35 +35,37 @@
                                 <div class="row">
                                     <div class="col d-flex justify-content-center">
                                         <div class="d-flex align-items-start me-3 mt-1">
-                                            <img src="assets/waving-hand.png" alt="Description"
+                                            <img src="assets/cricket.png" alt="Description"
                                                 style="width: auto; height: 5vh;">
                                         </div>
                                         <div class="d-flex flex-column align-items-center">
                                             <div class="text-center text-part-1">
                                                 <h1 class="fw-bold text-dark mb-0"
-                                                    style="line-height: 1.2em; font-size: 5vh;">Hey there.</h1>
+                                                    style="line-height: 1.2em; font-size: 5vh;">Lets create an event.</h1>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="w-100 text-center text-part-2">
-                                <h1 class="fw-bold text-dark mb-0" style="line-height: 1.2em; font-size: 5vh;">Need to sign up?</h1>
-                            </div>
                             <div class="fs-6 alert alert-danger mt-2 mb-2 fw-semibold invisible" id="invalid_input">Fill here</div>
                             <form class="row g-3 needs-validation" onsubmit="sign_up()" action='javascript:;'>
                                 <div class="col-md-6 mb-3">
-                                    <label for="member_fname" class="form-label fw-medium">First name<span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="member_fname" placeholder="Sachin" required>
+                                    <label for="event_name" class="form-label fw-medium">Event name<span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="event_name" placeholder="Winter nets" required>
                                     <div class="valid-feedback">
                                     Looks good!
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="member_lname" class="form-label fw-medium">Last name<span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="member_lname" placeholder="Tendulkar" required>
-                                    <div class="valid-feedback">
-                                    Looks good!
+                                    <label for="event_type" class="form-label fw-medium">Event type<span class="text-danger">*</span></label>
+                                    <select class="form-select" id="event_type" required>
+                                        <option selected disabled value="">Select event type...</option>
+                                        <option value="1">Test match</option>
+                                        <option value="2">T20i</option>
+                                        <option value="3">Training session</option>
+                                    </select>
+                                    <div class="invalid-feedback">
+                                    Please provide a valid zip.
                                     </div>
                                 </div>
                                 <div class="col-md-12">
