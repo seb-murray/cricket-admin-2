@@ -1,5 +1,7 @@
 <?php
 
+    include "scripts/core.php";
+
     session_start();
 
     if (!isset($_SESSION['member_ID'])) 
@@ -7,6 +9,12 @@
         header("Location: sign-in.html"); // Redirect the user to the sign-in page.
         exit();
     }
+
+    $member_ID = System_Utility::decrypt($_SESSION["member_ID"]);
+    $system = Query_Client::get_system_instance();
+    
+    $team_admin_query = Teams::read_teams_from_team_admin($system, $member_ID);
+    $_SESSION["team_admins"] = $team_admin_query->get_result_as_assoc_array();
 
 ?>
 
@@ -56,8 +64,6 @@
         <h1 class="navbar-brand h1 m-2 me-4">
             <?php 
 
-                include "scripts/core.php";
-
                 $system = Query_Client::get_system_instance();
                 $member_ID = System_Utility::decrypt($_SESSION['member_ID']);
                 
@@ -80,6 +86,27 @@
             <li class="nav-item">
             <a class="nav-link active" aria-current="page" href="schedule.php">Schedule</a>
             </li>
+
+            <?php
+
+                if (count($_SESSION["team_admins"]) > 0)
+                {
+                    echo '<li class="nav-item">
+                    <a class="nav-link active" aria-current="page" href="create-event.php">Create Event</a>
+                    </li>';
+                }
+
+                if ($_SESSION['club_admin'] == 1)
+                {
+                    echo '<li class="nav-item">
+                    <a class="nav-link active" aria-current="page" href="manage-members.php">Manage Members</a>
+                    </li>';
+
+                    echo '<li class="nav-item">
+                    <a class="nav-link active" aria-current="page" href="manage-teams.php">Manage Teams</a>
+                    </li>';
+                }
+            ?>
         </ul>
         <form class="d-flex" action="javascript:;" onsubmit="sign_out()">
             <button class="btn btn-outline-danger" type="submit">Sign out</button>

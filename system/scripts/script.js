@@ -101,6 +101,69 @@ async function update_availability(event)
     }
 }
 
+async function create_event() 
+{
+	try 
+	{
+		let url = 'https://wyvernsite.net/sebMurray/system/scripts/create-event-script.php';
+
+		let event_name = document.getElementById("event_name").value;
+
+		let event_team = document.getElementById("event_team").value;
+        
+
+		let event_type = document.getElementById("event_type").value;
+
+		let unformatted_event_date = new Date(document.getElementById("event_date").value);
+		let event_date = unformatted_event_date.toISOString().split("T")[0];
+
+		let event_location = document.getElementById("event_location").value;
+		let event_meet_time = document.getElementById("event_meet_time").value;
+        let event_start_time = document.getElementById("event_start_time").value;
+
+        let event_description = document.getElementById("event_description").value;
+
+		let form_data = new FormData();
+
+		let alert_element = document.getElementById("invalid_input");
+
+		form_data.append("event_name", event_name);
+		form_data.append("team_ID", event_team);
+		form_data.append("event_type_ID", event_type);
+		form_data.append("event_date", event_date);
+		form_data.append("event_location", event_location);
+		form_data.append("event_meet_time", event_meet_time);
+		form_data.append("event_start_time", event_start_time);
+        form_data.append("event_description", event_description);
+
+		let response = await fetch(url, { method: 'POST', body: form_data });
+
+		let result = await response.text();
+		let JSON_result = JSON.parse(result);
+
+		if (JSON_result.error) 
+		{
+			alert_element.innerHTML = JSON_result.error;
+            alert_element.classList.remove("alert-success");
+            alert_element.classList.add("alert-danger")
+			alert_element.classList.remove("invisible");
+		}
+		else 
+		{
+            alert_element.innerHTML = "Event created successfully.";
+            alert_element.classList.remove("alert-danger");
+            alert_element.classList.add("alert-success")
+			alert_element.classList.remove("invisible");
+
+            document.getElementById("create-event-form").reset();
+		}
+	}
+	catch (error) 
+	{
+		log_error_to_db(error);
+	}
+}
+
 async function sign_out()
 {
     let url = 'https://wyvernsite.net/sebMurray/system/scripts/sign-out-script.php';

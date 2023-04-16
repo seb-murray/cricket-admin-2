@@ -2001,7 +2001,7 @@
                             INNER JOIN `AVAILABILITY` 
                                 ON EVENTS.event_ID = AVAILABILITY.event_ID 
                                     AND TEAM_MEMBERS.team_member_ID = AVAILABILITY.team_member_ID 
-                            WHERE (TEAM_MEMBERS.member_ID = ? OR GUARDIANSHIP.parent_ID = ?)
+                            WHERE ((TEAM_MEMBERS.member_ID = ? OR GUARDIANSHIP.parent_ID = ?) AND EVENTS.event_date >= NOW())
                             ORDER BY EVENTS.event_date, EVENTS.event_meet_time ASC;";
 
                         $params = [$member_ID, $member_ID];
@@ -3520,6 +3520,60 @@
 
                     $params = [$member_ID, $client->get_club_ID()];
                     $param_types = "ii";
+
+                    $read_team = new Query($sql, $params, $param_types);
+                    return $read_team;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
+
+        public static function read_teams_from_team_admin(Query_Client $client, int $member_ID)
+        {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT * 
+                            FROM `TEAM_MEMBERS` 
+                        INNER JOIN `TEAMS` 
+                            ON TEAM_MEMBERS.team_ID = TEAMS.team_ID 
+                        INNER JOIN `ROLES` 
+                            ON TEAM_MEMBERS.role_ID = ROLES.role_ID 
+                        INNER JOIN `MEMBERS` 
+                            ON TEAM_MEMBERS.member_ID = MEMBERS.member_ID 
+                        WHERE (TEAM_MEMBERS.member_ID = ? AND (ROLES.team_admin = 1 OR MEMBERS.admin = 1));";
+
+                    $params = [$member_ID];
+                    $param_types = "i";
+
+                    $read_team = new Query($sql, $params, $param_types);
+                    return $read_team;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    $sql = 
+                        "SELECT TEAMS.team_name, TEAMS.team_nickname 
+                        FROM `TEAM_MEMBERS` 
+                        INNER JOIN `TEAMS` 
+                            ON TEAM_MEMBERS.team_ID = TEAMS.team_ID 
+                        INNER JOIN `ROLES` 
+                            ON TEAM_MEMBERS.role_ID = ROLES.role_ID 
+                        INNER JOIN `MEMBERS` 
+                            ON TEAM_MEMBERS.member_ID = MEMBERS.member_ID 
+                        WHERE (TEAM_MEMBERS.member_ID = ? AND (ROLES.team_admin = 1 OR MEMBERS.admin = 1));";
+
+                    $params = [$member_ID];
+                    $param_types = "i";
 
                     $read_team = new Query($sql, $params, $param_types);
                     return $read_team;
