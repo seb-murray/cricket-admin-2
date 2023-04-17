@@ -150,7 +150,7 @@ async function create_event()
 		}
 		else 
 		{
-            alert_element.innerHTML = "Event created successfully.";
+            alert_element.innerHTML = "Event created successfully. <a href='schedule.php'>See it here.</a>";
             alert_element.classList.remove("alert-danger");
             alert_element.classList.add("alert-success")
 			alert_element.classList.remove("invisible");
@@ -196,4 +196,21 @@ function sort_teams()
             event.style.display = 'none';
         }
     }
+}
+
+function select_team(e)
+{
+    const button = e.target;
+
+    let var_event_ID = button.getAttribute('event_ID');
+
+    let event = {
+        event_ID: var_event_ID
+    }
+
+    var GET_data = Object.keys(event).map(key => key + '=' + encodeURIComponent(event[key])).join('&');
+
+    var url = 'https://wyvernsite.net/sebMurray/system/select-participants.php?' + GET_data;
+
+    window.location.href = url;
 }

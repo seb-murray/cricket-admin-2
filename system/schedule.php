@@ -14,7 +14,14 @@
     $system = Query_Client::get_system_instance();
     
     $team_admin_query = Teams::read_teams_from_team_admin($system, $member_ID);
-    $_SESSION["team_admins"] = $team_admin_query->get_result_as_assoc_array();
+    $team_admin_assoc = $team_admin_query->get_result_as_assoc_array();
+
+    foreach ($team_admin_assoc as &$team)
+    {
+        $team['team_ID'] = System_Utility::encrypt($team['team_ID']);
+    }
+
+    $_SESSION["team_admins"] = $team_admin_assoc;
 
 ?>
 
@@ -184,7 +191,8 @@
             echo '</select></div>';
 
             $events = Events::read_events_from_member($user, $user->get_member_ID());
-            $feed = $events->get_result_as_HTML_feed();
+
+            $feed = $events->get_result_as_HTML_feed($_SESSION['team_admins']);
 
             if ($events->check_null_result())
             {   

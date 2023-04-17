@@ -12,10 +12,19 @@
     $member_ID = System_Utility::decrypt($_SESSION["member_ID"]);
     $system = Query_Client::get_system_instance();
     
-    $query = Teams::read_teams_from_team_admin($system, $member_ID);
-    $_SESSION["team_admins"] = $query->get_result_as_assoc_array();
+    $team_admin_query = Teams::read_teams_from_team_admin($system, $member_ID);
+    $team_admin_assoc = $team_admin_query->get_result_as_assoc_array();
 
-    if ($query->check_null_result())
+    $_SESSION["team_admins"] = [];
+
+    foreach ($team_admin_assoc as $team_ID)
+    {
+        $team_ID = System_Utility::encrypt($team_ID);
+    }
+
+    $_SESSION["team_admins"] = $team_admin_assoc;
+
+    if ($team_admin_query->check_null_result())
     {
         header("Location: not-admin.html");
         exit();
@@ -48,7 +57,7 @@
 
 </head>
 
-<body style="overflow: hidden;">
+<body>
 <nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid bg-transparent">
         <h1 class="navbar-brand h1 m-2 me-4">
