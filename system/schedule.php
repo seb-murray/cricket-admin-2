@@ -66,62 +66,6 @@
 
 <body>
 
-<nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
-    <div class="container-fluid bg-transparent">
-        <h1 class="navbar-brand h1 m-2 me-4">
-            <?php 
-
-                $system = Query_Client::get_system_instance();
-                $member_ID = System_Utility::decrypt($_SESSION['member_ID']);
-                
-                $club_ID = Members::read_member($system, $member_ID)?->get_result_as_assoc_array()[0]['club_ID'];
-                $club_name = Clubs::read_club($system, $club_ID)?->get_result_as_assoc_array()[0]['club_name'];
-
-                $_SESSION['club_name'] = $club_name;
-
-                echo $club_name;
-            ?>
-        </h1>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <li class="nav-item">
-            <a class="nav-link active" aria-current="page" href="home.php">Home</a>
-            </li>
-            <li class="nav-item">
-            <a class="nav-link active" aria-current="page" href="schedule.php">Schedule</a>
-            </li>
-
-            <?php
-
-                if (count($_SESSION["team_admins"]) > 0)
-                {
-                    echo '<li class="nav-item">
-                    <a class="nav-link active" aria-current="page" href="create-event.php">Create Event</a>
-                    </li>';
-                }
-
-                if ($_SESSION['club_admin'] == 1)
-                {
-                    echo '<li class="nav-item">
-                    <a class="nav-link active" aria-current="page" href="manage-members.php">Manage Members</a>
-                    </li>';
-
-                    echo '<li class="nav-item">
-                    <a class="nav-link active" aria-current="page" href="manage-teams.php">Manage Teams</a>
-                    </li>';
-                }
-            ?>
-        </ul>
-        <form class="d-flex" action="javascript:;" onsubmit="sign_out()">
-            <button class="btn btn-outline-danger" type="submit">Sign out</button>
-        </form>
-        </div>
-    </div>
-    </nav>
-
     <?php
 
 		try 
@@ -132,9 +76,11 @@
             $user = Query_Client::get_user_instance($member_ID);
             $system = Query_Client::get_system_instance();
 
+            System_Utility::print_navbar($_SESSION['club_name'], $_SESSION['club_admin'], Validation::check_team_admin($system, $member_ID));
+
             echo '<div class="container mt-4 mb-4"><div class="row"><div class="col-12 col-md-6 mx-auto">';
 
-            echo '<div class="text-center"><h1 class="fw-bold text-dark mb-3 d-flex align-items-center justify-content-center">Your schedule</h1></div>';
+            echo '<div class="text-center"><h1 class="fw-bold text-dark mb-4 d-flex align-items-center justify-content-center" style="line-height: 1.2em; font-size: 5vh;">Your schedule</h1></div>';
 
             echo '<div class="form-group"><label for="team-filter" class="form-label fw-medium">Team</label><select class="form-select mb-4" id="team-filter" required onchange="sort_teams()"><option selected value="all">All teams</option>';
 

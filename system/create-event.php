@@ -24,7 +24,7 @@
 
     $_SESSION["team_admins"] = $team_admin_assoc;
 
-    if ($team_admin_query->check_null_result())
+    if ($team_admin_query->check_null_result() and ($_SESSION["club_admin"] != 1))
     {
         header("Location: not-admin.html");
         exit();
@@ -58,61 +58,10 @@
 </head>
 
 <body>
-<nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
-    <div class="container-fluid bg-transparent">
-        <h1 class="navbar-brand h1 m-2 me-4">
-            <?php 
 
-                $system = Query_Client::get_system_instance();
-                $member_ID = System_Utility::decrypt($_SESSION['member_ID']);
-                
-                $club_ID = Members::read_member($system, $member_ID)?->get_result_as_assoc_array()[0]['club_ID'];
-                $club_name = Clubs::read_club($system, $club_ID)?->get_result_as_assoc_array()[0]['club_name'];
-
-                $_SESSION['club_name'] = $club_name;
-
-                echo $club_name;
-            ?>
-        </h1>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <li class="nav-item">
-            <a class="nav-link active" aria-current="page" href="home.php">Home</a>
-            </li>
-            <li class="nav-item">
-            <a class="nav-link active" aria-current="page" href="schedule.php">Schedule</a>
-            </li>
-
-            <?php
-
-                if (count($_SESSION["team_admins"]) > 0)
-                {
-                    echo '<li class="nav-item">
-                    <a class="nav-link active" aria-current="page" href="create-event.php">Create Event</a>
-                    </li>';
-                }
-
-                if ($_SESSION['club_admin'] == 1)
-                {
-                    echo '<li class="nav-item">
-                    <a class="nav-link active" aria-current="page" href="manage-members.php">Manage Members</a>
-                    </li>';
-
-                    echo '<li class="nav-item">
-                    <a class="nav-link active" aria-current="page" href="manage-teams.php">Manage Teams</a>
-                    </li>';
-                }
-            ?>
-        </ul>
-        <form class="d-flex" action="javascript:;" onsubmit="sign_out()">
-            <button class="btn btn-outline-danger" type="submit">Sign out</button>
-        </form>
-        </div>
-    </div>
-    </nav>
+    <?php
+        System_Utility::print_navbar($_SESSION['club_name'], $_SESSION['club_admin'], Validation::check_team_admin(Query_Client::get_system_instance(), System_Utility::decrypt($_SESSION['member_ID'])));
+    ?>
 
     <section class="min-vh-100 d-flex align-items-center">
         <div class="container login my-3 mx-auto">
@@ -123,7 +72,7 @@
                             <div class="d-flex justify-content-center align-items-center mt-4">
                                 <div class="row">
                                     <div class="col d-flex justify-content-center">
-                                        <h1 class="fw-bold text-dark mb-2 d-flex align-items-center"><span class="display-5">&#127951;</span> &nbsp; Lets create an event.</h1>
+                                        <h1 class="fw-bold text-dark mb-2 d-flex align-items-center">&#127951;&nbsp; Lets create an event.</h1>
                                     </div>
                                 </div>
                             </div>
@@ -197,6 +146,9 @@
                                         Please choose a date.
                                     </div>
                                 </div>
+                                <p class="text-muted mb-0 mt-2 fw-normal">
+                                    New type of event? <a href="https://wyvernsite.net/sebMurray/system/create-event-type.php" class="text-primary text-decoration-none fw-medium">Create event type</a>
+                                </p>
                                 <div class="col-md-6">
                                     <label for="event_location" class="form-label fw-medium">Location<span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="event_location" required>

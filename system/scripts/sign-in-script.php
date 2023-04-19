@@ -23,6 +23,7 @@
 
             $_SESSION['member_ID'] = $member_ID_encrypted;
             $_SESSION['club_ID'] = $club_ID_encrypted;
+            $_SESSION['club_name'] = Clubs::read_club($system, $member_info["club_ID"])->get_result_as_assoc_array()[0]['club_name'];
             $_SESSION['member_fname'] = $member_info['member_fname'];
             $_SESSION['member_lname'] = $member_info['member_lname'];
             $_SESSION['club_admin'] = $member_info['admin'];

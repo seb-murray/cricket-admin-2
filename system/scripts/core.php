@@ -3176,8 +3176,26 @@
     
     class Roles
     {
-        //Roles should not be read directly
-        //or created/updated/deleted from the PHP script
+        public static function read_all_roles()
+        {
+            try
+            {
+                $sql = 
+                    "SELECT * 
+                    FROM `ROLES`;";
+
+                $params = [];
+                $param_types = "";
+
+                $read_roles = new Query($sql, $params, $param_types);
+                return $read_roles;
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
     }
 
     class Teams
@@ -4009,6 +4027,157 @@
             }
         }
 
+        public static function read_team_member_from_member_and_team(Query_Client $client, int $member_ID, int $team_ID)
+        {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT * 
+                        FROM `TEAM_MEMBERS` 
+                        WHERE (`member_ID` = ? and `team_ID` = ?);";
+
+                    $params = [$member_ID, $team_ID];
+                    $param_types = "ii";
+
+                    $read_team_members = new Query($sql, $params, $param_types);
+                    return $read_team_members;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    throw new System_Error(0, "Client does not have the sufficient permissions to perform this action.", __LINE__);
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
+
+        public static function update_team_member_from_member_and_team(Query_Client $client, int $member_ID, int $team_ID, int $role_ID)
+        {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "UPDATE `TEAM_MEMBERS` 
+                            SET `role_ID` = ? 
+                        WHERE (`member_ID` = ? and `team_ID` = ?);";
+
+                    $params = [$role_ID, $member_ID, $team_ID];
+                    $param_types = "iii";
+
+                    $update_team_member = new Query($sql, $params, $param_types);
+                    return $update_team_member;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    $system = Query_Client::get_system_instance();
+
+                    $club_ID = Clubs::read_club_from_member($system, $member_ID)->get_result_as_assoc_array()[0]["club_ID"];
+
+                    if ($client->get_club_ID() == $club_ID)
+                    {
+                        if (Validation::check_club_admin($system, $client->get_member_ID()))
+                        {
+                            $sql = 
+                                "UPDATE `TEAM_MEMBERS` 
+                                    SET `role_ID` = ? 
+                                WHERE (`member_ID` = ? and `team_ID` = ?);";
+
+                            $params = [$role_ID, $member_ID, $team_ID];
+                            $param_types = "iii";
+
+                            $update_team_member = new Query($sql, $params, $param_types);
+                            return $update_team_member;
+                        }
+                        else
+                        {
+                            throw new System_Error(0, "Client passed as arg does not have the permissions to update team_members.", __LINE__);
+                        }
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "Query_Client passed as arg is not a member of the same club as the team_member_ID.", __LINE__);
+                    }
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
+
+        public static function delete_team_member_from_member_and_team(Query_Client $client, int $member_ID, int $team_ID)
+        {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "DELETE FROM `TEAM_MEMBERS` 
+                        WHERE (`member_ID` = ? and `team_ID` = ?);";
+
+                    $params = [$member_ID, $team_ID];
+                    $param_types = "ii";
+
+                    $delete_team_member = new Query($sql, $params, $param_types);
+                    return $delete_team_member;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    $system = Query_Client::get_system_instance();
+
+                    $club_ID = Clubs::read_club_from_member($system, $member_ID)->get_result_as_assoc_array()[0]["club_ID"];
+
+                    if ($client->get_club_ID() == $club_ID)
+                    {
+                        if (Validation::check_club_admin($system, $client->get_member_ID()))
+                        {
+                            $sql = 
+                                "DELETE FROM `TEAM_MEMBERS` 
+                                WHERE (`member_ID` = ? and `team_ID` = ?);";
+
+                            $params = [$member_ID, $team_ID];
+                            $param_types = "ii";
+
+                            $delete_team_member = new Query($sql, $params, $param_types);
+                            return $delete_team_member;
+                        }
+                        else
+                        {
+                            throw new System_Error(0, "Client passed as arg does not have the permissions to delete team_members.", __LINE__);
+                        }
+                    }
+                    else
+                    {
+                        throw new System_Error(0, "Query_Client passed as arg is not a member of the same club as the team_member_ID.", __LINE__);
+                    }
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
+
     }
 
     class Validation
@@ -4610,6 +4779,55 @@
                 new Error_Handler($error);
                 return null;
             }
+        }
+
+        public static function print_navbar(string $club_name, bool $club_admin, bool $team_admin)
+        {
+
+
+            $navbar = "<nav class='navbar sticky-top navbar-expand-lg navbar-dark bg-dark'>
+            <div class='container-fluid bg-transparent'>
+                <a href='home.php' class='navbar-brand h1 m-2 me-4'>
+                    &#127968; &thinsp;<span class='d-none d-md-inline'>$club_name</span><span class='d-inline d-md-none'>Home</span>
+                </a>
+                <button class='navbar-toggler' type='button' data-bs-toggle='collapse' data-bs-target='#navbarSupportedContent' aria-controls='navbarSupportedContent' aria-expanded='false' aria-label='Toggle navigation'>
+                <span class='navbar-toggler-icon'></span>
+                </button>
+                <div class='collapse navbar-collapse' id='navbarSupportedContent'>
+                <ul class='navbar-nav me-auto mb-2 mb-lg-0'>
+                    <li class='nav-item'>
+                    <a class='nav-link active' aria-current='page' href='home.php'>Home</a>
+                    </li>
+                    <li class='nav-item'>
+                    <a class='nav-link active' aria-current='page' href='schedule.php'>Schedule</a>
+                    </li>";
+
+                    if ($team_admin)
+                    {
+                        $navbar .= "<li class='nav-item'>
+                        <a class='nav-link active' aria-current='page' href='create-event.php'>Create Event</a>
+                        </li><li class='nav-item'>
+                        <a class='nav-link active' aria-current='page' href='manage-members.php'>Manage Members</a>
+                        </li>";
+                    }
+                    
+                    if ($club_admin)
+                    {
+                        $navbar .= "<li class='nav-item'>
+                            <a class='nav-link active' aria-current='page' href='manage-teams.php'>Manage Teams</a>
+                            </li>";
+                    }
+
+
+                    $navbar .= "</ul>
+                            <form class='d-flex' action='javascript:;' onsubmit='sign_out()'>
+                                <button class='btn btn-outline-danger' type='submit'>Sign out</button>
+                            </form>
+                            </div>
+                        </div>
+                        </nav>";
+
+                echo $navbar;
         }
     }
 

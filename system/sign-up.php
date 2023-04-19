@@ -33,7 +33,7 @@
                         <div class="card-body mt-3">
                             <div class="d-flex justify-content-center align-items-center">
                                 <div class="row">
-                                    <h1 class="fw-bold text-dark d-flex align-items-center text-center">&#128075; &thinsp;Welcome.<br>Need to sign up?</h1>
+                                    <h1 class="fw-bold text-dark d-flex align-items-center text-center">&#128075; &thinsp;Welcome. Need to sign up?</h1>
                                 </div>
                             </div>   
                             <div class="fs-6 alert alert-danger mt-2 mb-2 fw-semibold invisible" id="invalid_input">Fill here</div>

@@ -363,7 +363,7 @@ function edit_member_teams(e)
 {
     const button = e.target;
 
-    let team_ID = button.getAttribute('member_ID');
+    let member_ID = button.getAttribute('member_ID');
 
     let member = {
         member_ID: member_ID
@@ -374,5 +374,72 @@ function edit_member_teams(e)
     var url = 'https://wyvernsite.net/sebMurray/system/edit-member.php?' + GET_data;
 
     window.location.href = url;
+}
+
+async function update_team_member(e)
+{
+    const url = "https://wyvernsite.net/sebMurray/system/scripts/update-team-member-script.php";
+
+    const select = e.target;
+
+    let encrypted_member_ID = select.getAttribute('member_ID');
+    let encrypted_team_ID = select.getAttribute('team_ID');
+    let encrypted_role_ID = select.value;
+
+    let form_data = new FormData();
+
+    //form_data.append("client", client);
+    form_data.append("encrypted_member_ID", encrypted_member_ID);
+    form_data.append("encrypted_team_ID", encrypted_team_ID);
+    form_data.append("encrypted_role_ID", encrypted_role_ID);
+
+    let response = await fetch(url, { method: 'POST', body: form_data });
+    let result = await response.text();
+
+    switch(result) 
+    {
+        case "1":
+            window.location.reload(true);
+            break;
+        // If PHP fails
+        default:
+            break;
+    }
+}
+
+async function create_event_type(e)
+{
+    try 
+	{
+		let url = 'https://wyvernsite.net/sebMurray/system/scripts/create-event-type-script.php';
+
+        const form = e.target;
+
+		let event_type_name = document.getElementById("event_type_name").value;
+        let gender_restriction = document.getElementById("gender_restriction").value;
+        let min_age = document.getElementById("min_age").value;
+        let max_age = document.getElementById("max_age").value;
+        let event_type_description = document.getElementById("event_type_description").value;
+        let encrypted_club_ID = document.getElementById("event_type_name").getAttribute('club_ID');
+
+		let form_data = new FormData();
+
+		form_data.append("event_type_name", event_type_name);
+		form_data.append("gender_restriction", gender_restriction);
+		form_data.append("min_age", min_age);
+		form_data.append("max_age", max_age);
+		form_data.append("event_type_description", event_type_description);
+        form_data.append("encrypted_club_ID", encrypted_club_ID);
+
+		let response = await fetch(url, { method: 'POST', body: form_data });
+
+		let result = await response.text();
+
+        console.log(result);
+	}
+	catch (error) 
+	{
+		log_error_to_db(error);
+	}
 }
 
