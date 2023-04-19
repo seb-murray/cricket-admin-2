@@ -445,7 +445,7 @@
          * 
          * @return string|null The query result as HTML table code if the query successful. Otherwise, returns null.
          */
-        public function get_result_as_HTML_table(string $checkbox_heading = "")
+        public function get_result_as_HTML_table(string $click_action, string $checkbox_heading = "", bool $sum = false)
         {
             try
             {
@@ -497,18 +497,30 @@
 
                         $HTML_table .= '<tbody>';
 
+                        $row_count = 0;
+                        $checked_count = 0;
+
                         while ($row = $this->result->fetch_object()) 
                         {
                             $HTML_table .= '<tr>';
 
-                            $count = 0;
+                            $row_count++;
 
                             if ($checkbox_heading != "") {
                                 $ID = $row->{$fields[0]->name};
                                 $encrypted_ID = System_Utility::encrypt($ID);
-                                $is_checked = ($row->{$fields[1]->name} == 1) ? 'checked' : '';
 
-                                $HTML_table .= "<td class='text-center align-middle'><div class='form-check d-flex justify-content-center'><input class='form-check-input' type='checkbox' id='$encrypted_ID' $is_checked></div></td>";
+                                if ($row->{$fields[1]->name} == 1)
+                                {
+                                    $is_checked = 'checked';
+                                    $checked_count++;
+                                }
+                                else
+                                {
+                                    $is_checked = '';
+                                }
+
+                                $HTML_table .= "<td class='text-center align-middle'><div class='form-check d-flex justify-content-center'><input class='form-check-input' onchange='$click_action' type='checkbox' id='row_$row_count' db_ID='$encrypted_ID' $is_checked></div></td>";
                             }
 
                             $skip_fields = ($checkbox_heading != "") ? 2 : 0;
@@ -517,13 +529,17 @@
                                 $HTML_table .= '<td>' . $row->{$field->name} . '</td>';
                             }
 
-
                             $HTML_table .= '</tr>';
                         }
 
                         $HTML_table .= '</tbody>';
 
                         $HTML_table .= '</table>';
+
+                        if ($sum)
+                        {
+                            $HTML_table .= "<h6 class='fw-bold'>Total selected: <span class='fw-normal' id='table-selected-sum'>$checked_count</span></h6>";
+                        }
 
                         //Reset result pointer after fetching so a get_result...() method can be called more than once on one query.
                         $this->result->data_seek(0);
@@ -548,7 +564,7 @@
          * 
          * @return string|null The query result as HTML feed code if the query successful. Otherwise, returns null.
          */
-        public function get_result_as_HTML_feed(array $team_admins)
+        public function get_result_as_HTML_feed(array $team_admins = [])
         {
             try 
             {
@@ -649,6 +665,8 @@
                 $member_whole_name = $feed_data["member_whole_name"];
                 $team_name = $feed_data["team_name"];
 
+                $member_ID = $feed_data["member_ID"];
+
                 $encrypted_event_ID = System_Utility::encrypt($feed_data["event_ID"]);
 
                 $encrypted_team_ID = System_Utility::encrypt($feed_data["team_ID"]);
@@ -658,11 +676,11 @@
                 {
                     case 1:
                         $available = "<input class='form-check-input availability-switch me-2' type='checkbox' role='switch' id='available_switch_$item_index' availability_ID='$encrypted_availability_ID' onclick='update_availability(event)' checked>";
-                        $available_label = "Going";
+                        $available_label = "Available";
                         break;
                     default:
                         $available = "<input class='form-check-input availability-switch me-2' type='checkbox' role='switch' id='available_switch_$item_index' availability_ID='$encrypted_availability_ID' onclick='update_availability(event)'>";
-                        $available_label = "Not going";
+                        $available_label = "Not available";
                         break;
                 }
 
@@ -695,12 +713,36 @@
 
                 $feed_item_HTML .= "<p id='event_description_$item_index' availability_ID='$encrypted_availability_ID' class='text-muted'>$event_description</p>";
 
-                $feed_item_HTML .= "<div class='form-check form-switch d-flex align-items-center availability-container'>";
+                $feed_item_HTML .= "<div class='form-check form-switch d-flex align-items-center availability-container mb-2'>";
                 $feed_item_HTML .= $available;
                 $feed_item_HTML .= "<label class='form-check-label mb-0 availability-label' for='available_switch_$item_index' id='label_available_switch_$item_index' availability_ID='$encrypted_availability_ID'>$available_label</label>";
                 $feed_item_HTML .= "</div>";
 
-                $feed_item_HTML .= "<h6 id='member_whole_name_$item_index' availability_ID='$encrypted_availability_ID' class='mt-4 mb-0'>$member_whole_name</h6>";
+                $user = Query_Client::get_user_instance($member_ID);
+                $read_team = Availability::read_participants_from_event($user, $feed_data["event_ID"]);
+                $read_team_assoc = $read_team->get_result_as_assoc_array();
+
+                if (!$read_team->check_null_result())
+                {
+                    $feed_item_HTML .= "<div class='mb-4 mt-4'>";
+                    $feed_item_HTML .= "<h6>Team</h6>";
+                    $feed_item_HTML .= "<ul class='list-group'>";
+
+                    $player_count = 1;
+
+                    foreach ($read_team_assoc as $player)
+                    {
+                        $name = $player['member_whole_name'];
+
+                        $feed_item_HTML .= "<li class='list-group-item d-flex align-items-start'><span class='mr-2 fw-semibold' style='width: 1.5em;'>$player_count.</span>$name</li>";
+                        $player_count++;
+                    }
+
+                    $feed_item_HTML .= "</ul>";
+                    $feed_item_HTML .= "</div>";
+                }
+
+                $feed_item_HTML .= "<h6 id='member_whole_name_$item_index' availability_ID='$encrypted_availability_ID' class='mt-2 mb-0'>$member_whole_name</h6>";
                 $feed_item_HTML .= "<p id='team_name_$item_index' availability_ID='$encrypted_availability_ID' class='text-muted mb-0'>$team_name</p>";
 
                 if (in_array($feed_data['team_ID'], $team_admins))
@@ -1243,6 +1285,54 @@
             }
         }
 
+        public static function update_participation(Query_Client $client, int $availability_ID, int $participating)
+        {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::USER)
+                {
+                    $member_ID = $client->get_member_ID();
+
+                    $sql = 
+                        "UPDATE `AVAILABILITY` 
+                        INNER JOIN `TEAM_MEMBERS` 
+                            ON AVAILABILITY.team_member_ID = TEAM_MEMBERS.team_member_ID 
+                        INNER JOIN `MEMBERS` 
+                            ON TEAM_MEMBERS.member_ID = MEMBERS.member_ID 
+                        SET `participating` = ? 
+                        WHERE (AVAILABILITY.availability_ID = ? AND MEMBERS.member_ID = ?);";
+
+                    $params = [$participating, $availability_ID, $member_ID];
+                    $param_types = "iii";
+
+                    $update_participation = new Query($sql, $params, $param_types);
+                    return $update_participation;
+                }
+                elseif ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "UPDATE `AVAILABILITY`
+                        SET `participating` = ? 
+                        WHERE (availability_ID = ?);";
+
+                    $params = [$participating, $availability_ID];
+                    $param_types = "ii";
+
+                    $update_participation = new Query($sql, $params, $param_types);
+                    return $update_participation;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg to update_availability() has unrecognised Client_Type.", __LINE__);
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
+
         //delete_availability() does not exist, as once created an availability should not be removed
 
         //Specialised SQL Functions
@@ -1256,17 +1346,28 @@
                 {
                     //Check if availability belongs to the client's club
 
-                    $sql = self::USER_READ_SQL;
-
                     $club_ID = $client->get_club_ID();
 
-                    $sql .= "
-                            WHERE (AVAILABILITY.event_ID = ? AND CLUBS.club_ID = ? ";
+                    $sql .= "   SELECT AVAILABILITY.availability_ID, AVAILABILITY.participating, 
+                                CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name 
+                                FROM `AVAILABILITY` 
+                                INNER JOIN `TEAM_MEMBERS` 
+                                    ON AVAILABILITY.team_member_ID = TEAM_MEMBERS.team_member_ID 
+                                INNER JOIN `MEMBERS` 
+                                    ON TEAM_MEMBERS.member_ID = MEMBERS.member_ID 
+                                INNER JOIN `EVENTS` 
+                                    ON AVAILABILITY.event_ID = EVENTS.event_ID 
+                                INNER JOIN `TEAMS` 
+                                    ON EVENTS.team_ID = TEAMS.team_ID 
+                                INNER JOIN `CLUBS` 
+                                    ON TEAMS.club_ID = CLUBS.club_ID 
+                                INNER JOIN `EVENT_TYPES` 
+                                    ON EVENTS.event_type_ID = EVENT_TYPES.event_type_ID 
+                                WHERE (AVAILABILITY.event_ID = ? AND CLUBS.club_ID = ? ";
                     
                     if ($is_available != null)
                     {
-                        $sql .= "
-                            AND AVAILABILITY.available = ?);";
+                        $sql .= "AND AVAILABILITY.available = ?);";
 
                         $params = [$event_ID, $club_ID, $is_available];
                         $param_types = "iii";
@@ -1278,8 +1379,6 @@
                         $params = [$event_ID, $club_ID];
                         $param_types = "ii";
                     }
-                    
-                    //echo $sql;
 
                     $read_availability = new Query($sql, $params, $param_types);
                     return $read_availability;
@@ -1321,7 +1420,6 @@
                 return null;
             }
         }
-
         public static function read_availabilities_from_member(Query_Client $client, $member_ID)
         {
             try
@@ -1382,6 +1480,53 @@
                 else
                 {
                     throw new System_Error(0, "Query_Client passed as arg to read_availabilities_from_member() has unrecognised Client_Type.", __LINE__);
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
+
+        public static function read_participants_from_event(Query_Client $client, int $event_ID)
+        {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::USER)
+                {
+                    //Check if availability belongs to the client's club
+
+                    $sql = self::USER_READ_SQL;
+
+                    $club_ID = $client->get_club_ID();
+
+                    $sql .= "
+                            WHERE (AVAILABILITY.event_ID = ? AND CLUBS.club_ID = ? AND AVAILABILITY.participating = 1) ORDER BY AVAILABILITY.modified ASC;";
+                    
+                    $params = [$event_ID, $club_ID];
+                    $param_types = "ii";
+
+                    $read_availability = new Query($sql, $params, $param_types);
+                    return $read_availability;
+                }
+                elseif ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "SELECT * 
+                        FROM `AVAILABILITY` 
+                        WHERE (AVAILABILITY.event_ID = ? AND AVAILABILITY.participating = 1)
+                        ORDER BY AVAILABILITY.modified ASC;";
+
+                    $params = [$event_ID];
+                    $param_types = "i";
+
+                    $read_availability = new Query($sql, $params, $param_types);
+                    return $read_availability;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg to read_availabilities_from_event() has unrecognised Client_Type.", __LINE__);
                 }
             }
             catch(Throwable $error)
@@ -2038,7 +2183,7 @@
                             INNER JOIN `AVAILABILITY` 
                                 ON EVENTS.event_ID = AVAILABILITY.event_ID 
                                     AND TEAM_MEMBERS.team_member_ID = AVAILABILITY.team_member_ID 
-                            WHERE ((TEAM_MEMBERS.member_ID = ? OR GUARDIANSHIP.parent_ID = ?) AND EVENTS.event_date >= NOW())
+                            WHERE ((TEAM_MEMBERS.member_ID = ? OR GUARDIANSHIP.parent_ID = ?) AND EVENTS.event_date >= DATE(NOW()))
                             ORDER BY EVENTS.event_date, EVENTS.event_meet_time ASC;";
 
                         $params = [$member_ID, $member_ID];
@@ -2866,7 +3011,7 @@
                         WHERE (member_ID = ?);";
 
                     $params = [$member_ID];
-                    $param_types = "ii";
+                    $param_types = "i";
 
                     $delete_member = new Query($sql, $params, $param_types);
                     return $delete_member;
@@ -2892,7 +3037,7 @@
                 if ($client->get_client_type() == Client_Type::SYSTEM)
                 {
                     $sql = 
-                        "SELECT `member_ID` 
+                        "SELECT * 
                         FROM `MEMBERS` 
                         WHERE (`club_ID` = ?);";
 
@@ -2906,10 +3051,12 @@
                 {
                     if ($club_ID == $client->get_club_ID())
                     {
-                        if (Validation::check_club_admin($client, $client->get_member_ID()))
+                        $system = Query_Client::get_system_instance();
+
+                        if (Validation::check_club_admin($client, $client->get_member_ID()) or Validation::check_team_admin($system, $client->get_member_ID()))
                         {
                             $sql = 
-                                "SELECT CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name 
+                                "SELECT CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name, member_ID  
                                 FROM `MEMBERS` 
                                 WHERE (`club_ID` = ?);";
 
@@ -3036,10 +3183,52 @@
     class Teams
     {
 
-        /*public static function create_team(Query_Client $client, string $team_name, string $team_nickname = "")
+        public static function create_team(Query_Client $client, string $team_name, int $club_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "INSERT INTO `TEAMS` 
+                        (`team_name`, `club_ID`) 
+                        VALUES (?, ?);";
 
-        }*/
+                    $params = [$team_name, $club_ID];
+                    $param_types = "si";
+
+                    $create_team = new Query($sql, $params, $param_types);
+                    return $create_team;
+                }
+                elseif ($client->get_client_type() == Client_Type::USER)
+                {
+                    $system = Query_Client::get_system_instance();
+
+                    if (Validation::check_club_admin($system, $client->get_member_ID()))
+                    {
+                        $sql = 
+                        "INSERT INTO `TEAMS` 
+                        (`team_name`, `club_ID`) 
+                        VALUES (?, ?);";
+
+                        $params = [$team_name, $client->get_club_ID()];
+                        $param_types = "si";
+
+                        $create_team = new Query($sql, $params, $param_types);
+                        return $create_team;
+                    }
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised Client_Type.", __LINE__);
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
 
         public static function read_team(Query_Client $client, string $team_ID)
         {
@@ -3136,10 +3325,37 @@
             }
         }
 
-        /*public static function delete_team()
+        public static function delete_team(Query_Client $client, int $team_ID)
         {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::USER)
+                {
+                    throw new System_Error(0, "Query_Client does not have permission to perform this action.", __LINE__);
+                }
+                elseif ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "DELETE FROM `TEAMS` 
+                        WHERE (team_ID = ?);";
 
-        }*/
+                    $params = [$team_ID];
+                    $param_types = "i";
+
+                    $delete_team = new Query($sql, $params, $param_types);
+                    return $delete_team;
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised Client_Type.", __LINE__);
+                }
+            }
+            catch(Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
 
         //Custom SQL functions
 
@@ -3925,7 +4141,7 @@
             }
         }
 
-        public static function check_team_admin(Query_Client $client, int $member_ID, int $team_ID)
+        public static function check_team_admin(Query_Client $client, int $member_ID, int $team_ID = null)
         {
             try
             {
@@ -3938,16 +4154,31 @@
                 }
                 else if ($client->get_client_type() == Client_Type::USER)
                 {
-                    $sql = 
-                    "SELECT ROLES.team_admin 
-                        FROM `TEAM_MEMBERS`
-                    INNER JOIN `ROLES` 
-                        ON TEAM_MEMBERS.role_ID = ROLES.role_ID 
-                    WHERE member_ID = ? 
-                        AND team_ID = ?;";
+                    if ($team_ID == null)
+                    {
+                        $sql = 
+                            "SELECT ROLES.team_admin 
+                                FROM `TEAM_MEMBERS`
+                            INNER JOIN `ROLES` 
+                                ON TEAM_MEMBERS.role_ID = ROLES.role_ID 
+                            WHERE member_ID = ?;";
 
-                    $params = [$member_ID, $team_ID];
-                    $param_types = "ii";
+                        $params = [$member_ID];
+                        $param_types = "i";
+                    }
+                    else
+                    {
+                        $sql = 
+                            "SELECT ROLES.team_admin 
+                                FROM `TEAM_MEMBERS`
+                            INNER JOIN `ROLES` 
+                                ON TEAM_MEMBERS.role_ID = ROLES.role_ID 
+                            WHERE member_ID = ? 
+                                AND team_ID = ?;";
+
+                        $params = [$member_ID, $team_ID];
+                        $param_types = "ii";
+                    }
 
                     $is_team_admin = new Query($sql, $params, $param_types);
 

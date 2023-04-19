@@ -29,7 +29,6 @@
             echo json_encode($error);
             throw new System_Error(0, "Event creation failed.", __LINE__);
         }
-
     }
     catch (Throwable $error)
     {

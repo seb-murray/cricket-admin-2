@@ -134,6 +134,8 @@
 
             echo '<div class="container mt-4 mb-4"><div class="row"><div class="col-12 col-md-6 mx-auto">';
 
+            echo '<div class="text-center"><h1 class="fw-bold text-dark mb-3 d-flex align-items-center justify-content-center">Your schedule</h1></div>';
+
             echo '<div class="form-group"><label for="team-filter" class="form-label fw-medium">Team</label><select class="form-select mb-4" id="team-filter" required onchange="sort_teams()"><option selected value="all">All teams</option>';
 
             if (Validation::check_is_parent($system, $user->get_member_ID()))

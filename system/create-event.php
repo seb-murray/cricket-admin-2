@@ -123,16 +123,7 @@
                             <div class="d-flex justify-content-center align-items-center mt-4">
                                 <div class="row">
                                     <div class="col d-flex justify-content-center">
-                                        <div class="d-flex align-items-start me-3 mt-1">
-                                            <img src="assets/cricket.png" alt="Description"
-                                                style="width: auto; height: 5vh;">
-                                        </div>
-                                        <div class="d-flex flex-column align-items-center">
-                                            <div class="text-center text-part-1">
-                                                <h1 class="fw-bold text-dark mb-0"
-                                                    style="line-height: 1.2em; font-size: 5vh;">Lets create an event.</h1>
-                                            </div>
-                                        </div>
+                                        <h1 class="fw-bold text-dark mb-2 d-flex align-items-center"><span class="display-5">&#127951;</span> &nbsp; Lets create an event.</h1>
                                     </div>
                                 </div>
                             </div>

@@ -16,11 +16,20 @@
     $team_admin_query = Teams::read_teams_from_team_admin($system, $member_ID);
     $team_admin_assoc = $team_admin_query->get_result_as_assoc_array();
 
-    $_SESSION["team_admins"] = [];
-
-    foreach ($team_admin_assoc as $team_ID)
+    foreach ($team_admin_assoc as &$team)
     {
-        $team_ID = System_Utility::encrypt($team_ID);
+        $team = $team['team_ID'];
+    }
+
+    if ((!$_SESSION['club_admin'] == 1))
+    {
+        header("Location: not-admin.html");
+        exit();
+    }
+
+    foreach ($team_admin_assoc as &$team)
+    {
+        $team = System_Utility::encrypt($team);
     }
 
     $_SESSION["team_admins"] = $team_admin_assoc;
@@ -36,7 +45,23 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Home</title>
+    <title>Select participants</title>
+
+    <?php
+
+        $member_ID = $_SESSION['member_ID'];
+        $club_ID = $_SESSION['club_ID'];
+        $member_fname = $_SESSION['member_fname'];
+        $member_lname = $_SESSION['member_lname'];
+
+        echo "<script type='application/javascript'>";
+            echo "var member_ID = '$member_ID';";
+            echo "var club_ID = '$club_ID';";
+            echo "var member_fname = '$member_fname';";
+            echo "var member_lname = '$member_lname';";
+        echo "</script>";
+
+    ?>
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KK94CHFLLe+nY2dmCWGMq91rCGa5gtU4mk92HdvYe+M/SXH301p5ILy+dN9+nJOZ" crossorigin="anonymous">
@@ -48,30 +73,9 @@
     <!-- Custom JS -->
     <script src="scripts/script.js" type="application/javascript"></script>
 
-    <style>
-        body::before {
-            content: "";
-            background-image: url("assets/cricket-bg.jpg");
-            filter: blur(10px);
-            -webkit-filter: blur(10px);
-
-            width: 110%;
-            height: 110%;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: -1;
-
-            background-position: center;
-            background-repeat: no-repeat;
-            background-size: cover;
-        }
-    </style>
-
 </head>
 
-<body style="overflow: hidden;">
+<body>
 
 <nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid bg-transparent">
@@ -129,16 +133,33 @@
     </div>
     </nav>
 
-    <div class="container d-flex align-items-center bg-transparent" style="max-width: 700px; height: 90vh;">
-        <div class="shadow-lg p-3 m-4 bg-white rounded">
-        <div class="row">
-            <div class="col d-flex justify-content-center m-4">
-                <h1 class="fw-bold text-dark d-flex align-items-center"><span class="display-4">&#127951;</span> &nbsp; Welcome, <?php echo $_SESSION['member_fname'] ?>.</h1>
-            </div>
-        </div>
-            <p class="text-center m-4 mt-2 text-muted fs-4 fw-normal lh-sm">Head to the <?php echo $_SESSION['club_name'] ?> <a class="fw-semibold text-decoration-none text-muted" href="schedule.php">Schedule</a> tab to see upcoming events.</p>
-        </div>
-    </div>
+    <?php
+
+        $system = Query_Client::get_system_instance();
+        $encrypted_member_ID = $_SESSION['member_ID'];
+        $member_ID = intval(System_Utility::decrypt($encrypted_member_ID));
+
+        echo '<div class="container mt-4 mb-4"><div class="row"><div class="col-12 col-md-6 mx-auto">';
+
+        echo '<nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="manage-teams.php" class="text-decoration-none">Manage teams</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Add team</li>
+        </ol>
+        </nav>';
+
+        echo "<h1 class='fw-bold text-dark mb-4'>Add team</h1>";
+
+        echo    "<div class='mb-3'>
+                    <label for='team-name' class='form-label'>Team name</label>
+                    <input type='text' class='form-control' placeholder='First team' id='team-name' member_ID='$encrypted_member_ID'>
+                </div>";
+        
+
+        echo "<button type='submit' class='btn btn-primary me-3' onclick='create_team()'>Add team</button>";
+    ?>
+    
 </body>
 
 </html>
+

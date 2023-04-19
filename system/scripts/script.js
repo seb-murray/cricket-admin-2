@@ -59,11 +59,11 @@ async function update_availability(event)
     {
         case true:
             available = 1;
-            label_element.innerHTML = "Going";
+            label_element.innerHTML = "Available";
             break;
         default:
             available = 0;
-            label_element.innerHTML = "Not going";
+            label_element.innerHTML = "Not available";
             break;
     }
 
@@ -89,11 +89,11 @@ async function update_availability(event)
             switch(available) 
             {
                 case true:
-                    label_element.innerHTML = "Not going";
+                    label_element.innerHTML = "Not available";
                     element.setAttribute(checked, false);
                     break;
                 default:
-                    label_element.innerHTML = "Going";
+                    label_element.innerHTML = "Available";
                     element.setAttribute(checked, true);
                     break;
             }
@@ -214,3 +214,165 @@ function select_team(e)
 
     window.location.href = url;
 }
+
+async function select_participant(event) {
+    
+    const element = event.target;
+
+    var participating;
+
+    if (element.checked) 
+    {
+        const selected_sum = parseInt(document.getElementById('table-selected-sum').innerHTML);
+
+        document.getElementById('table-selected-sum').innerHTML = (selected_sum + 1).toString();
+
+        participating = 1;
+    } 
+    else 
+    {
+        const selected_sum = parseInt(document.getElementById('table-selected-sum').innerHTML);
+
+        document.getElementById('table-selected-sum').innerHTML = (selected_sum - 1).toString();
+
+        participating = 0;
+    }
+
+    const url = 'https://wyvernsite.net/sebMurray/system/scripts/create-participant.php';
+
+    const availability_ID = element.getAttribute('db_ID');
+
+    let form_data = new FormData();
+
+    //form_data.append("client", client);
+    form_data.append("encrypted_availability_ID", availability_ID);
+    form_data.append("participating", participating);
+
+    let response = await fetch(url, { method: 'POST', body: form_data });
+    let result = await response.text();
+
+    console.log(result);
+
+}
+
+function edit_team(e)
+{
+    const button = e.target;
+
+    let team_ID = button.getAttribute('team_ID');
+
+    let team = {
+        team_ID: team_ID
+    }
+
+    var GET_data = Object.keys(team).map(key => key + '=' + encodeURIComponent(team[key])).join('&');
+
+    var url = 'https://wyvernsite.net/sebMurray/system/edit-team.php?' + GET_data;
+
+    window.location.href = url;
+}
+
+async function delete_team(e)
+{
+    const url = "https://wyvernsite.net/sebMurray/system/scripts/delete-team.php";
+
+    const delete_btn = e.target;
+
+    let team_ID = delete_btn.getAttribute('team_ID');
+
+    let form_data = new FormData();
+
+    //form_data.append("client", client);
+    form_data.append("encrypted_team_ID", team_ID);
+
+    let response = await fetch(url, { method: 'POST', body: form_data });
+    let result = await response.text();
+
+    switch(result) 
+    {
+        case "1":
+            window.location.href = "https://wyvernsite.net/sebMurray/system/manage-teams.php";
+            break;
+        // If PHP fails
+        default:
+            break;
+    }
+}
+
+async function update_team(e)
+{
+    const button = e.target;
+    const url = "https://wyvernsite.net/sebMurray/system/scripts/update-team-script.php";
+
+    let team_name_textbox = document.getElementById('team-name');
+
+    let team_name = team_name_textbox.value;
+    let encrypted_team_ID = button.getAttribute('team_ID')
+
+    let form_data = new FormData();
+
+    //form_data.append("client", client);
+    form_data.append("team_name", team_name);
+    form_data.append("encrypted_team_ID", encrypted_team_ID);
+
+    let response = await fetch(url, { method: 'POST', body: form_data });
+    let result = await response.text();
+
+    console.log(result);
+
+    switch(result) 
+    {
+        case "1":
+            window.location.reload(true);
+            break;
+        // If PHP fails
+        default:
+            break;
+    }
+}
+
+async function create_team()
+{
+    const url = "https://wyvernsite.net/sebMurray/system/scripts/create-team-script.php";
+
+    team_name_textbox = document.getElementById('team-name');
+    encrypted_member_ID = team_name_textbox.getAttribute('member_ID');
+    team_name = team_name_textbox.value;
+
+    let form_data = new FormData();
+
+    //form_data.append("client", client);
+    form_data.append("team_name", team_name);
+    form_data.append("encrypted_member_ID", encrypted_member_ID);
+
+    let response = await fetch(url, { method: 'POST', body: form_data });
+    let result = await response.text();
+
+    switch(result) 
+    {
+        case "1":
+            window.location.href = "https://wyvernsite.net/sebMurray/system/manage-teams.php";
+            break;
+        // If PHP fails
+        default:
+            break;
+    }
+}
+
+function edit_member_teams(e)
+{
+    const button = e.target;
+
+    let team_ID = button.getAttribute('member_ID');
+
+    let member = {
+        member_ID: member_ID
+    }
+
+    var GET_data = Object.keys(member).map(key => key + '=' + encodeURIComponent(member[key])).join('&');
+
+    var url = 'https://wyvernsite.net/sebMurray/system/edit-member.php?' + GET_data;
+
+    window.location.href = url;
+}
+

@@ -31,25 +31,11 @@
                 <div class="col-md-6">
                     <div class="card shadow-lg border-0">
                         <div class="card-body mt-3">
-                            <div class="d-flex justify-content-center align-items-center mt-4">
+                            <div class="d-flex justify-content-center align-items-center">
                                 <div class="row">
-                                    <div class="col d-flex justify-content-center">
-                                        <div class="d-flex align-items-start me-3 mt-1">
-                                            <img src="assets/waving-hand.png" alt="Description"
-                                                style="width: auto; height: 5vh;">
-                                        </div>
-                                        <div class="d-flex flex-column align-items-center">
-                                            <div class="text-center text-part-1">
-                                                <h1 class="fw-bold text-dark mb-0"
-                                                    style="line-height: 1.2em; font-size: 5vh;">Hey there.</h1>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <h1 class="fw-bold text-dark d-flex align-items-center text-center">&#128075; &thinsp;Welcome.<br>Need to sign up?</h1>
                                 </div>
-                            </div>
-                            <div class="w-100 text-center text-part-2">
-                                <h1 class="fw-bold text-dark mb-0" style="line-height: 1.2em; font-size: 5vh;">Need to sign up?</h1>
-                            </div>
+                            </div>   
                             <div class="fs-6 alert alert-danger mt-2 mb-2 fw-semibold invisible" id="invalid_input">Fill here</div>
                             <form class="row g-3 needs-validation" onsubmit="sign_up()" action='javascript:;'>
                                 <div class="col-md-6 mb-3">
@@ -128,17 +114,46 @@
                                     <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="ts_and_cs" required>
                                     <label class="form-check-label fw-semibold fs-6" for="ts_and_cs">
-                                        I agree to the <a href="#">terms and conditions</a><span class="text-danger">*</span>
+                                        I agree to the <a href="#" class="terms-link" data-bs-toggle="modal" data-bs-target="#termsModal">terms and conditions</a><span class="text-danger">*</span>
                                     </label>
                                     <div class="invalid-feedback">
                                         You must agree before submitting.
                                     </div>
                                     </div>
                                 </div>
+                                
                                 <div class="col-12">
-                                    <button type="submit" id="form_submit" class="btn btn-primary w-100 mb-4 fw-semibold fs-6">Sign up</button>
+                                    <button type="submit" id="form_submit" class="btn btn-primary w-100 mb-3 fw-semibold fs-6">Sign up</button>
                                 </div>
                                 </form>
+                                <p class="text-muted mb-2 fw-medium">
+                                    Already have an account? <a href="https://wyvernsite.net/sebMurray/system/sign-in.html" class="text-primary text-decoration-none">Sign in</a>
+                                </p>
+
+                                <!-- Modal -->
+                                <div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h1 class="modal-title fs-5" id="termsModalLabel">Terms and Conditions</h1>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="fw-medium">By using the Cricket Club Manager app, you agree to the following terms and conditions:</p>
+                                        <ol>
+                                        <li>We are not responsible for any injuries or damages that may occur while using the app or during any cricket games organized through the app.</li>
+                                        <li>We are not responsible for any disputes or disagreements that may arise between team members, coaches, or other users of the app.</li>
+                                        <li>We reserve the right to modify, suspend, or terminate the app at any time without prior notice.</li>
+                                        <li>Your personal information will be kept private and secure, in accordance with our privacy policy.</li>
+                                        </ol>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                    </div>
+                                </div>
+                                </div>
+
                         </div>
                     </div>
                 </div>

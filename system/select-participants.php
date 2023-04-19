@@ -28,7 +28,7 @@
     $event_team_ID = Teams::read_team_from_event($system, $event_ID)->get_result_as_assoc_array()[0]['team_ID'];
     $encrypted_team_ID = System_Utility::encrypt($event_team_ID);
 
-    if (!in_array($encrypted_team_ID, $team_admin_assoc))
+    if ((!in_array($encrypted_team_ID, $team_admin_assoc)) and (!$_SESSION['club_admin'] == 1))
     {
         header("Location: not-admin.html");
         exit();
@@ -135,7 +135,9 @@
 
     <?php
 
-        echo '<div class="container mt-4 mb-4"><div class="row"><div class="col-12 col-md-6 mx-auto">';
+        echo '<div class="container mt-4 mb-4"><div class="row"><div class="mx-auto">';
+
+        echo '<h1 class="fw-bold text-dark mb-0" style="line-height: 1.2em; font-size: 5vh;">Select team</h1>';
 
         $system = Query_Client::get_system_instance();
         $member_ID = intval(System_Utility::decrypt($_SESSION['member_ID']));
@@ -146,10 +148,8 @@
         
         $availabilities = Availability::read_availabilities_from_event($user, $event_ID, 1);
 
-        
-
-        echo $availabilities->get_result_as_HTML_table("Selected");
-
+        echo $availabilities->get_result_as_HTML_table("select_participant(event)", "Selected", true);
+        echo '<a class="btn btn-primary mt-3" href="schedule.php" role="button">Done</a>';
         echo '</div></div></div>';
 
     ?>
