@@ -251,14 +251,18 @@
                             }
                         }
 
+                        //Execute query
                         $this->query->execute();
 
+                        //Code will not reach this point if the query failed (try...catch)
                         $this->query_success = true;
+                        //Set object result property to query result
                         $this->result = $this->query->get_result();
                     }
                 }
                 else
                 {
+                    //throw new System_Error manually throws an error to try...catch - this will be logged to the database
                     throw new System_Error(0, "Query has already been executed.", __LINE__);
                 }
             }
@@ -441,50 +445,62 @@
         }
 
         /**
-         * Retrieves the result of the executed SQL query as HTML table code.
+         * Retrieves the result of the executed SQL query as HTML table code. If you are including a checkbox field, the first column of data must contain the relevant ID for the row, and the second must be a boolean value for the checkbox.
+         * 
+         * @param string|null $checkbox_heading The heading for a checkbox field within the table. If left null, no checkbox field will be added.
+         * @param string|null $click_action The action which will be performed on checkbox click (only included if $checkbox_heading is not null).
+         * @param string|null $sum Boolean flag stating whether a counter for how many checkboxes have been selected should be included below the table (only included if $checkbox_heading is not null).
          * 
          * @return string|null The query result as HTML table code if the query successful. Otherwise, returns null.
          */
-        public function get_result_as_HTML_table(string $click_action, string $checkbox_heading = "", bool $sum = false)
+        public function get_result_as_HTML_table(string $click_action = null, string $checkbox_heading = null, bool $sum = false)
         {
             try
             {
+                // Only attempt if query was successful
                 if ($this->query_success)
                 {
                     // Variable which will contain HTML to return.
                     $HTML_table = "";
 
-                    //Fetch number of rows in $this->result
+                    // Fetch number of rows in $this->result
                     if ($this->result->num_rows)
                     {
                         $row_count = $this->result->num_rows;
 
-                        //fetch_fields() returns an array of objects, containing info about each field
+                        // fetch_fields() returns an array of objects, containing info about each field
                         $fields = $this->result->fetch_fields();
-
-                        //$data = $this->result;
 
                         $HTML_table .= '<table class="table table-striped table-bordered">';
                         $HTML_table .= '<thead>';
                         $HTML_table .= '<tr>';
 
-                        if ($checkbox_heading != "")
+                        // If there is a checkbox field, add a heading for the column.
+                        if ($checkbox_heading != null)
                         {
                             $HTML_table .= "<th scope='col'>$checkbox_heading</th>";
-                        }
 
-                        if ($checkbox_heading != "")
-                        {
-                            $count = 2;
+                            // Including a checkbox field removes the first column which should contain a database ID
+                            // Therefore when the data is written into the table, it should be offset by two columns
+                            $offset = 2;
+
+                            // Variable which stores the number of rows in the table data (body)
+                            // This is used for checkbox HTML IDs
+                            $row_count = 0;
+
+                            // Variable which stores the number of pre-checked rows in the table data
+                            $checked_count = 0;
                         }
                         else
                         {
-                            $count = 0;
+                            // If there is no checkbox, there is no offset for the table data
+                            $offset = 0;
                         }
 
+                        // Loop through the table fields (headings), and write them into the HTML code
                         for ($x = 0; $x < count($fields); $x++)
                         {
-                            if (!($x < $count))
+                            if (!($x < $offset))
                             {
                                 $heading = $this->get_heading_from_fieldname($fields[$x]->name);
 
@@ -497,19 +513,21 @@
 
                         $HTML_table .= '<tbody>';
 
-                        $row_count = 0;
-                        $checked_count = 0;
-
                         while ($row = $this->result->fetch_object()) 
                         {
-                            $HTML_table .= '<tr>';
-
                             $row_count++;
 
-                            if ($checkbox_heading != "") {
+                            $HTML_table .= '<tr>';
+
+                            // If there is a checkbox field, a checkbox is written to the table HTML
+                            if ($checkbox_heading != null) 
+                            {
+                                // The checkbox ID in the database
                                 $ID = $row->{$fields[0]->name};
+                                // This is encrypted to hid the real value from the end user (security)
                                 $encrypted_ID = System_Utility::encrypt($ID);
 
+                                // If the checkbox boolean value in the database is already true, it needs to show as checked when the page loads
                                 if ($row->{$fields[1]->name} == 1)
                                 {
                                     $is_checked = 'checked';
@@ -520,12 +538,18 @@
                                     $is_checked = '';
                                 }
 
+                                //Checkbox which has its own ID (containing row on table), and encrypted database ID
                                 $HTML_table .= "<td class='text-center align-middle'><div class='form-check d-flex justify-content-center'><input class='form-check-input' onchange='$click_action' type='checkbox' id='row_$row_count' db_ID='$encrypted_ID' $is_checked></div></td>";
                             }
 
-                            $skip_fields = ($checkbox_heading != "") ? 2 : 0;
+                            // If there is a checkbox, the first two columns contain the ID for the checkbox, and its value
+                            // These should not be included in the table, so are skipped (if there is a checkbox)
+                            $skip_fields = ($checkbox_heading != null) ? 2 : 0;
 
-                            foreach (array_slice($fields, $skip_fields) as $field) {
+                            // Runs through the rest of the table row, adding the data
+                            // If $skip_fields = 2, the first two fields are removed from the array
+                            foreach (array_slice($fields, $skip_fields) as $field) 
+                            {
                                 $HTML_table .= '<td>' . $row->{$field->name} . '</td>';
                             }
 
@@ -536,6 +560,8 @@
 
                         $HTML_table .= '</table>';
 
+                        // If the sum boolean flag (param) is true, output the total number of checked fields
+                        // This has its own ID, so it can be updated using JS
                         if ($sum)
                         {
                             $HTML_table .= "<h6 class='fw-bold'>Total selected: <span class='fw-normal' id='table-selected-sum'>$checked_count</span></h6>";
@@ -562,56 +588,77 @@
         /**
          * Retrieves the result of an executed SQL query (event) as HTML feed code.
          * 
+         * @param array $team_admins Array of teams which the current user is an admin of. A select team button will be shown on events which users are an admin of.
+         * 
          * @return string|null The query result as HTML feed code if the query successful. Otherwise, returns null.
          */
         public function get_result_as_HTML_feed(array $team_admins = [])
         {
             try 
             {
+                // Only run if the SQL query was successful
                 if ($this->query_success) 
                 {
+                    // Ensure the SQL query returned some rows of data
                     if (!($this->check_null_result()))
                     {
+                        // Get the number of rows in the query result
                         $row_count = $this->result->num_rows;
+                        // Get the names of the columns in the query result
                         $result_info = $this->result->fetch_fields();
 
+                        // Initialize an empty array to store field names
                         $fields = [];
 
+                        // Decrypt the team_IDs in the $team_admins array
                         foreach ($team_admins as &$team)
                         {
                             $team = System_Utility::decrypt($team['team_ID']);
                         }
 
+                        // Store field names in the $fields array
                         for ($x = 0; $x < count($result_info); $x++)
                         {
                             array_push($fields, $result_info[$x]->name);
                         }
 
+                        // Required fields for the HTML feed
                         $req_fields = ["availability_ID", "team_name", "event_name", "event_type_name", "event_date", "event_meet_time", "event_start_time", "event_location", "event_description", "available", "member_whole_name", "member_ID", "team_ID", "event_ID"];
 
+                        // Determine whether there are any differences between the columns provided in the SQL result and the columns required to generate a feed item
                         $array_diff = array_diff($req_fields, $fields);
 
+                        // Check if all requires fields are present in the query result
                         if (count($array_diff) == 0)
                         {
                             if ($row_count > 0) 
                             {
+                                // Convert the query result to an associative array
                                 $result_assoc_array = self::get_result_as_assoc_array();
+                                // Initialize an empty array to store feed items
                                 $feed_items = [];
 
+                                // Loop through each row in the query result
                                 for ($item_index = 0; $item_index < $row_count; $item_index++)
                                 {
+                                    // Generate an HTML feed item for the current row
                                     $HTML = $this->generate_HTML_feed_item($item_index, $result_assoc_array[$item_index], $team_admins);
 
+                                    // Check if the generated HTML feed item is not null
                                     if ($HTML != null)
                                     {
+                                        // Add the generated HTML feed item to the feed_items array
                                         array_push($feed_items, $HTML);
                                     }
                                 } 
 
+                                // Combine all HTML feed items into a single string
                                 $HTML_feed = implode("", $feed_items);
 
+                                // Reset the result pointer to the first row so another get_result_as...() method can be called.
                                 $this->result->data_seek(0);
 
+                                // Return the combined HTML feed
                                 return $HTML_feed;
                             }
                         }
@@ -649,12 +696,25 @@
             }
         }
 
+        /**
+         * Generates an HTML feed item for a single event using the provided event data.
+         *
+         * @param int $item_index The index of the current event item.
+         * @param array $feed_data The event data as an associative array.
+         * @param array $team_admins Array of team IDs for which the current user is an admin.
+         *
+         * @return string|null The generated HTML feed item if successful. Otherwise, returns null.
+         */
         private function generate_HTML_feed_item(int $item_index, array $feed_data, array $team_admins)
         {
             try 
             {
+                // Encrypt availability_ID, event_ID, and team_ID for security purposes
                 $encrypted_availability_ID = System_Utility::encrypt($feed_data["availability_ID"]);
+                $encrypted_event_ID = System_Utility::encrypt($feed_data["event_ID"]);
+                $encrypted_team_ID = System_Utility::encrypt($feed_data["team_ID"]);
 
+                // Extract rest of event data from the $feed_data array
                 $event_name = $feed_data["event_name"];
                 $event_type_name = $feed_data["event_type_name"];
                 $event_date = $feed_data["event_date"];
@@ -664,14 +724,9 @@
                 $event_description = $feed_data["event_description"];
                 $member_whole_name = $feed_data["member_whole_name"];
                 $team_name = $feed_data["team_name"];
-
                 $member_ID = $feed_data["member_ID"];
-
-                $encrypted_event_ID = System_Utility::encrypt($feed_data["event_ID"]);
-
-                $encrypted_team_ID = System_Utility::encrypt($feed_data["team_ID"]);
                 
-
+                // Determine the availability status and corresponding label
                 switch ($feed_data["available"])
                 {
                     case 1:
@@ -684,8 +739,10 @@
                         break;
                 }
 
+                // Begin constructing the HTML feed item
                 $feed_item_HTML = "<div class='feed-item' id='feed_item_$item_index' availability_ID='$encrypted_availability_ID' team_ID='$encrypted_team_ID'>";
-
+                
+                // Add event details to the HTML feed item
                 $feed_item_HTML .= "<h3 class='mb-0' id='event_name_$item_index' availability_ID='$encrypted_availability_ID'>$event_name</h3>";
                 $feed_item_HTML .= "<p id='event_type_name_$item_index' availability_ID='$encrypted_availability_ID' class='text-muted mb-3'>$event_type_name</p>";
 
@@ -722,18 +779,23 @@
                 $read_team = Availability::read_participants_from_event($user, $feed_data["event_ID"]);
                 $read_team_assoc = $read_team->get_result_as_assoc_array();
 
+                // Check if the event participants list is not empty
                 if (!$read_team->check_null_result())
                 {
+                    // Add a div to display participants
                     $feed_item_HTML .= "<div class='mb-4 mt-4'>";
                     $feed_item_HTML .= "<h6>Team</h6>";
                     $feed_item_HTML .= "<ul class='list-group'>";
 
+                    // Initialize the player count for displaying player numbers
                     $player_count = 1;
 
+                    // Iterate through the participants and add them to the feed item
                     foreach ($read_team_assoc as $player)
                     {
                         $name = $player['member_whole_name'];
 
+                        // Add the player's name with the player count as a prefix
                         $feed_item_HTML .= "<li class='list-group-item d-flex align-items-start'><span class='mr-2 fw-semibold' style='width: 1.5em;'>$player_count.</span>$name</li>";
                         $player_count++;
                     }
@@ -742,16 +804,21 @@
                     $feed_item_HTML .= "</div>";
                 }
 
+                // Add the member's whole name to the feed item
                 $feed_item_HTML .= "<h6 id='member_whole_name_$item_index' availability_ID='$encrypted_availability_ID' class='mt-2 mb-0'>$member_whole_name</h6>";
+                // Add the team name to the feed item
                 $feed_item_HTML .= "<p id='team_name_$item_index' availability_ID='$encrypted_availability_ID' class='text-muted mb-0'>$team_name</p>";
 
+                // Check if the current user is a team admin
                 if (in_array($feed_data['team_ID'], $team_admins))
                 {
+                    // Add a button for the admin to select a team
                     $feed_item_HTML .= "<button onclick='select_team(event)' id='select_team_$item_index' event_ID='$encrypted_event_ID' class='btn btn-primary w-100 mb-1 mt-3 fw-semibold fs-6'>Select team</button>";
                 }
 
                 $feed_item_HTML .= "</div>";
 
+                // Return the generated HTML feed item
                 return $feed_item_HTML;
             }
             catch (Throwable $error)
@@ -765,42 +832,55 @@
         /**
          * Checks whether the executed SQL query returned any rows.
          * 
-         * @return bool|null False if there are any rows in the result; true if the result is empty; and null in the case of an error within the function.
+         * @return bool|null False if there are any rows in the result; true if the result is empty; null in the case of an error within the function.
          */
         public function check_null_result()
         {
             try
             {
+                // Check if the number of rows in the result is greater than 0
                 if ($this->result->num_rows)
                 {
+                    // If there are rows in the result, return false (not a null result)
                     return false;                   
                 }
                 else
                 {
+                    // If there are no rows in the result, return true (null result)
                     return true;
                 }
             }
             catch(Throwable $error)
             {
+                // Handle the error and return null
                 new Error_Handler($error);
                 return null;
             }
         }
 
+        /**
+         * Checks if the SQL query execution was successful or not.
+         *
+         * @return bool|null True if the query was successful; false if it was not successful; null in case of an error.
+         */
         public function check_query_success()
         {
             try
             {
+                // Check the value of the query_success property
                 switch ($this->query_success)
                 {
                     case true:
+                        // If the query was successful, return true
                         return true;
                     default:
+                        // If the query was unsuccessful, return false
                         return false;
                 }
             }
             catch (Throwable $error)
             {
+                // Handle the error and return null
                 new Error_Handler($error);
                 return null;
             }
@@ -809,6 +889,9 @@
         
     }
 
+    /**
+     * Error_Handler class to handle various types of errors; either logs them to the database, or displays on page (specific to error);
+     */
     class Error_Handler
     {
         private $error;
@@ -817,23 +900,35 @@
         private $error_message;
         private $error_line;
         private $error_file;
-        
+
+        /**
+         * Constructs a new Error_Handler object.
+         *
+         * @param Throwable $error The error object to handle.
+         * @param bool $error_fail Indicates if the error should be displayed immediately. This should only be called if an error occurs when logging an error to the database within the Error_Handler class. Defaults to false.
+         */
         public function __construct(Throwable $error, bool $error_fail = false)
         {
+            // Assign the error object
             $this->error = $error;
 
+            // Extract properties from error object
             $this->error_message = $error->getMessage();
             $this->error_code = $error->getCode();
             $this->error_type = get_class($error);
             $this->error_line = null;
             $this->error_file = null;
 
+            // Handling different types of errors
             switch (true)
             {
+                // If $error_fail is true, display the error immediately
                 case $error_fail:
                     $this->display_error();
+                    
                 case $this->error instanceof mysqli_sql_exception:
                     $this->error_line = $error->getLine();
+                    // Handling different MySQL error codes
                     switch ($this->error_code)
                     {
                         case 1044:
@@ -885,6 +980,8 @@
                     $this->insert_error_to_db();
                     break;
 
+                // Insert the error into the database for unknown types of error
+                // If insertion fails, this will be displayed
                 default:
                     $this->error_line = $error->getLine();
                     $this->error_file = $error->getFile();
@@ -893,12 +990,19 @@
             }
         }
 
+        /**
+         * Inserts the error information into the database using a prepared statement to prevent SQL injection.
+         * 
+         * This uses seperate code to the Query class, incase of errors in that code.
+         */
         private function insert_error_to_db()
         {
             try
             {
+                // Connect to the database using the defined credentials (Database_Credentials class)
                 $connection = new mysqli(Database_Credentials::SERVERNAME, Database_Credentials::USERNAME, Database_Credentials::PASSWORD, Database_Credentials::DATABASE);
 
+                // Prepare the SQL query to insert the error information into the database
                 $sql = 
                 "INSERT INTO `ERRORS`
                 (`error_type`, `error_code`, `error_message`, `error_line`, `error_time`, `error_file`) 
@@ -906,19 +1010,24 @@
 
                 $query = $connection->prepare($sql);
 
+                // Prepare the parameters for the query
                 $params = [$this->error_type, $this->error_code, $this->error_message, $this->error_line, $this->error_file];
                 $param_types = "sssis";
 
+                // Bind the parameters to the query and execute it
                 $query->bind_param($param_types, ...$params);
-
                 $query->execute();
             }
             catch(Throwable $error)
             {
+                // If an error occurs while displaying the error, display straight away (don't log to DB).
                 new Error_Handler($error, true);
             }
         }
 
+        /**
+         * Displays the error information in a comma-separated format. This is not ideal, but is used as last-resort.
+         */
         private function display_error()
         {
             try
@@ -932,43 +1041,99 @@
         }
     }
 
+    /**
+     * Class System_Error extends the built-in Exception class.
+     * 
+     * This class is used to represent warnings or issues in the application.
+     * 
+     * The parent constructor does not have line attribute, so it is set manually.
+     * 
+     * It is thrown manually in a try...catch block.
+     */
     class System_Error extends Exception
     {
         protected $line;
 
+        /**
+         * Constructs a new System_Error object.
+         *
+         * @param int $error_code The error code.
+         * @param string $error_message The error message.
+         * @param int $error_line The line number where the error occurred.
+         */
         public function __construct(int $error_code, string $error_message, int $error_line)
         {
+            // Call the parent constructor to set the error code and message
             parent::__construct($error_message, $error_code);
 
+            // Set the error line
             $this->line = $error_line;
         }
     }
 
+    /**
+     * Class PHP_Error extends the built-in Exception class.
+     * 
+     * This class is used to represent PHP errors in the application.
+     * 
+     * It is specifically designed to be used with the set_custom_error_handler() PHP function.
+     * 
+     * The parent constructor does not have line and file attributes, so they are set manually.
+     */
     class PHP_Error extends Exception
     {
         protected $line;
         protected $file;
 
+        /**
+         * Constructs a new PHP_Error object.
+         *
+         * @param string $error_code The error code as a string. This is how it is represented PHP-side.
+         * @param string $error_message The error message.
+         * @param int $error_line The line number where the error occurred.
+         * @param string $error_file The file where the error occurred.
+         */
         public function __construct(string $error_code, string $error_message, int $error_line, string $error_file)
         {
+            // Call the parent constructor to set the error code and message
+            // Convert the error code to an integer
             parent::__construct($error_message, intval($error_code));
 
+            // Set the error line and file
             $this->line = $error_line;
             $this->file = $error_file;
         }
     }
 
+    /**
+     * Class Clientside_Error extends the built-in Exception class.
+     * 
+     * This class is used to represent client-side errors in the application.
+     * 
+     * The errors are caught by JavaScript and then logged by PHP.
+     * 
+     * The parent constructor does not have line and file attributes, so they are set manually.
+     */
     class Clientside_Error extends Exception
     {
-
-
         protected $line;
         protected $file;
 
+        /**
+         * Constructs a new Clientside_Error object.
+         *
+         * @param string $error_code The error code as a string.
+         * @param string $error_message The error message.
+         * @param int $error_line The line number where the error occurred.
+         * @param string $error_file The file where the error occurred.
+         */
         public function __construct(string $error_code, string $error_message, int $error_line, string $error_file)
         {
+            // Call the parent constructor to set the error code and message
+            // Convert the error code to an integer
             parent::__construct($error_message, intval($error_code));
 
+            // Set the error line and file
             $this->line = $error_line;
             $this->file = $error_file;
         }
@@ -980,28 +1145,57 @@
         const SYSTEM = "System";
     }
 
+    /**
+     * Class Query_Client represents a client performing an SQL query.
+     * 
+     * The client can either be the system or a user.
+     * 
+     * The class is used for identity checking, restricting query results or actions based on the client type.
+     * 
+     * It ensures the proper client type is used for each query, and implements a singleton pattern for system and user instances.
+     */
     class Query_Client
     {
+        // Client type (either system or user)
         private $client_type;
+        
+        // member_ID, only used for user clients
         private $member_ID = null;
+
+        // club_ID, only used for user clients
         private $club_ID = null;
+
+        // Singleton instances of system and user clients
         private static $system_instance = null;
         private static $user_instance = null;
 
+        /**
+         * Private constructor to ensure only the static singleton methods for getting instances are used.
+         * 
+         * Sets the client type and initializes the member_ID and club_ID if the client type is USER.
+         *
+         * @param string|null $client_type The type of client (SYSTEM or USER).
+         * @param int|null $member_ID The member ID for the user client (only applicable for user clients).
+         */
         private function __construct($client_type, $member_ID)
         {
             try
             {
+                // Set client type attribute from param
                 $this->client_type = $client_type;
 
+                // If the client type is USER, validate and set the member_ID and club_ID
                 if ($this->client_type == Client_Type::USER)
                 {
                     if ($member_ID != null)
                     {
+                        // Set the member_ID for the user client
                         $this->member_ID = $member_ID;
 
+                        // Retrieve the club_ID associated with the member_ID
                         $club_ID = Clubs::read_club_from_member(Query_Client::get_system_instance(), $this->member_ID);
 
+                        // Check if the club_ID was found and set it, otherwise throw an error
                         if ($club_ID->check_null_result())
                         {
                             throw new System_Error(0, "club_ID not found from member_ID", __LINE__);
@@ -1024,8 +1218,17 @@
             }
         }
 
+
+        /**
+         * Destructor, used to clean up resources when the object is destroyed.
+         */
         public function __destruct(){}
 
+        /**
+         * Returns a singleton instance of the system client.
+         *
+         * @return Query_Client|null The singleton instance of the system client; null if error occurs.
+         */
         public static function get_system_instance()
         {
             try
@@ -1042,11 +1245,14 @@
             catch(Throwable $error)
             {
                 new Error_Handler($error);
+                return null;
             }
         }
 
         public static function get_user_instance(int $member_ID)
         {
+            $system = Query_Client::get_system_instance();
+
             try
             {
                 if (self::$user_instance == null)
@@ -1061,7 +1267,7 @@
                         throw new System_Error(0, "Query_Client->member_ID not found in MEMBERS table.", __LINE__);
                     }
                 }
-                else if ($member_ID == self::$user_instance->get_member_ID())
+                else if (($member_ID == self::$user_instance->get_member_ID()) or ($member_ID == Guardianships::read_parent_from_child($system, self::$user_instance->get_member_ID())))
                 {
                     return self::$user_instance;
                 }

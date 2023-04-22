@@ -76,6 +76,9 @@
                                     </div>
                                 </div>
                             </div>
+                            <p class="text-muted mb-0 mt-2 fw-normal">
+                                    New type of event? <a href="https://wyvernsite.net/sebMurray/system/create-event-type.php" class="text-primary text-decoration-none fw-medium">Create event type</a>
+                                </p>
                             <div class="fs-6 alert mt-2 mb-2 fw-semibold invisible" id="invalid_input">Fill here</div>
                             <form class="row g-3 needs-validation" onsubmit="create_event()" action='javascript:;' id="create-event-form">
                                 <div class="col-md-6">
@@ -154,9 +157,6 @@
                                         Please choose a date.
                                     </div>
                                 </div>
-                                <p class="text-muted mb-0 mt-2 fw-normal">
-                                    New type of event? <a href="https://wyvernsite.net/sebMurray/system/create-event-type.php" class="text-primary text-decoration-none fw-medium">Create event type</a>
-                                </p>
                                 <div class="col-md-6">
                                     <label for="event_location" class="form-label fw-medium">Location<span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="event_location" required>
