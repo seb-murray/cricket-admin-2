@@ -713,7 +713,7 @@
 
                 $feed_item_HTML .= "<p id='event_description_$item_index' availability_ID='$encrypted_availability_ID' class='text-muted'>$event_description</p>";
 
-                $feed_item_HTML .= "<div class='form-check form-switch d-flex align-items-center availability-container mb-2'>";
+                $feed_item_HTML .= "<div class='form-check form-switch d-flex align-items-center availability-container mb-3'>";
                 $feed_item_HTML .= $available;
                 $feed_item_HTML .= "<label class='form-check-label mb-0 availability-label' for='available_switch_$item_index' id='label_available_switch_$item_index' availability_ID='$encrypted_availability_ID'>$available_label</label>";
                 $feed_item_HTML .= "</div>";
@@ -2803,6 +2803,74 @@
                 return null;
             }
         }
+
+        public static function update_parent_from_child(Query_Client $client, int $child_ID, int $parent_ID)
+        {
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "UPDATE `GUARDIANSHIP` 
+                        SET `parent_ID` = ? 
+                        WHERE (`child_ID` = ?);";
+
+                    $params = [$parent_ID, $child_ID];
+                    $param_types = "ii";
+
+                    $update_guardianship = new Query($sql, $params, $param_types);
+                    return $update_guardianship;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    throw new System_Error(0, "Query_Client passed as arg does not have permission to perform this action.", __LINE__);
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
+
+        public static function delete_guardianship_from_child(Query_Client $client, int $child_ID)
+        {
+            //Only system should be able to delete a guardianship
+            //In normal circumstances the guardianship should just be invalidated
+
+            try
+            {
+                if ($client->get_client_type() == Client_Type::SYSTEM)
+                {
+                    $sql = 
+                        "DELETE FROM `GUARDIANSHIP` 
+                        WHERE (`child_ID` = ?);";
+
+                    $params = [$child_ID];
+                    $param_types = "i";
+
+                    $delete_guardianship = new Query($sql, $params, $param_types);
+                    return $delete_guardianship;
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    throw new System_Error(0, "Query_Client of type USER does not have access to delete guardianships.", __LINE__);
+                }
+                else
+                {
+                    throw new System_Error(0, "Query_Client passed as arg has unrecognised client type.", __LINE__);
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
     }
 
     class Members
@@ -3037,7 +3105,7 @@
                 if ($client->get_client_type() == Client_Type::SYSTEM)
                 {
                     $sql = 
-                        "SELECT * 
+                        "SELECT MEMBERS.*, CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name 
                         FROM `MEMBERS` 
                         WHERE (`club_ID` = ?);";
 

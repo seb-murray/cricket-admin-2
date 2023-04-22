@@ -435,6 +435,34 @@ async function create_event_type(e)
 
 		let result = await response.text();
 
+        window.location.reload(true);
+	}
+	catch (error) 
+	{
+		log_error_to_db(error);
+	}
+}
+
+async function update_guardianship(e)
+{
+    try 
+	{
+		let url = 'https://wyvernsite.net/sebMurray/system/scripts/update-guardianship-script.php';
+
+        const select = e.target;
+
+		let parent = select.value;
+        let child = select.getAttribute('member_ID');
+
+		let form_data = new FormData();
+
+		form_data.append("parent_ID", parent);
+		form_data.append("child_ID", child);
+
+		let response = await fetch(url, { method: 'POST', body: form_data });
+
+		let result = await response.text();
+
         console.log(result);
 	}
 	catch (error) 

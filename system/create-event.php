@@ -93,13 +93,21 @@
                                         <?php 
                                             $system = Query_Client::get_system_instance();
 
-                                            $teams = $_SESSION["team_admins"];
-
-
-                                            for ($i = 0; $i < count($teams); $i++)
+                                            if ($_SESSION["club_admin"] == 1)
                                             {
-                                                $team_ID = System_Utility::encrypt($teams[$i]['team_ID']);
-                                                $team_name = $teams[$i]['team_name'];
+                                                $club_ID = intval(System_Utility::decrypt($_SESSION["club_ID"]));
+
+                                                $teams = Teams::read_teams_from_club($system, $club_ID)->get_result_as_assoc_array();
+                                            }
+                                            else
+                                            {
+                                                $teams = $_SESSION["team_admins"];
+                                            }
+
+                                            foreach ($teams as $team)
+                                            {
+                                                $team_ID = System_Utility::encrypt($team['team_ID']);
+                                                $team_name = $team['team_name'];
 
                                                 echo "<option value='$team_ID'>$team_name</option>";
                                             }

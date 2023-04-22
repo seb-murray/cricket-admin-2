@@ -21,7 +21,7 @@
         $team = $team['team_ID'];
     }
 
-    if ((!in_array($team_ID, $team_admin_assoc)) and (!$_SESSION['club_admin'] == 1))
+    if (($team_admin_query->check_null_result()) and (!$_SESSION['club_admin'] == 1))
     {
         header("Location: not-admin.html");
         exit();
@@ -38,7 +38,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Schedule</title>
+    <title>Manage members</title>
 
     <?php
 
