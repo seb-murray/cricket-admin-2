@@ -7,6 +7,7 @@
      * Handles PHP errors by logging them to the database. 
      * php_custom_error_handler() captures PHP error details as parameters, and creates a new instance of the custom 'PHP_Error' class. 
      * This object is then passed as a parameter to a new instance of the 'Error_Handler' class, which is responsible for logging the error to the database.
+     * 
      * @param int $error_code PHP error code
      * @param string $error_message PHP error message
      * @param string $error_file File in which the error occured
@@ -14,7 +15,7 @@
      * 
      * @return void Function does not return a value
      */
-    function php_custom_error_handler(int $error_code, string $error_message, string $error_file, int $error_line)
+    function php_custom_error_handler(int $error_code, string $error_message, string $error_file, int $error_line): void
     {
         // Instantiate the custom Exception object with the error message, error code and error line
         $error = new PHP_Error($error_code, $error_message, $error_line, $error_file);
@@ -31,9 +32,21 @@
      */
     class Database_Credentials
     {
+        /**
+         *
+         */
         const SERVERNAME = "localhost";
+        /**
+         *
+         */
         const USERNAME = "wyvernsi_sebMurray";
+        /**
+         *
+         */
         const PASSWORD = "L0n3someP0l3cat";
+        /**
+         *
+         */
         const DATABASE = "wyvernsi_sebM";
     }
 
@@ -717,7 +730,10 @@
                 // Extract rest of event data from the $feed_data array
                 $event_name = $feed_data["event_name"];
                 $event_type_name = $feed_data["event_type_name"];
-                $event_date = $feed_data["event_date"];
+
+                $date_time = DateTime::createFromFormat('d/m/Y', $feed_data["event_date"]);
+                $event_date = System_Utility::get_date_as_string($date_time);
+
                 $event_meet_time = System_Utility::get_meet_time_as_string($feed_data["event_meet_time"]);
                 $event_start_time = System_Utility::get_start_time_as_string($feed_data["event_start_time"]);
                 $event_location = $feed_data["event_location"];
@@ -776,6 +792,7 @@
                 $feed_item_HTML .= "</div>";
 
                 $user = Query_Client::get_user_instance($member_ID);
+
                 $read_team = Availability::read_participants_from_event($user, $feed_data["event_ID"]);
                 $read_team_assoc = $read_team->get_result_as_assoc_array();
 
@@ -894,11 +911,29 @@
      */
     class Error_Handler
     {
+        /**
+         * @var Throwable
+         */
         private $error;
+        /**
+         * @var string
+         */
         private $error_type;
+        /**
+         * @var int
+         */
         private $error_code;
+        /**
+         * @var string
+         */
         private $error_message;
+        /**
+         * @var int
+         */
         private $error_line;
+        /**
+         * @var string|null
+         */
         private $error_file;
 
         /**
@@ -1052,6 +1087,9 @@
      */
     class System_Error extends Exception
     {
+        /**
+         * @var int
+         */
         protected $line;
 
         /**
@@ -1082,7 +1120,13 @@
      */
     class PHP_Error extends Exception
     {
+        /**
+         * @var int
+         */
         protected $line;
+        /**
+         * @var string
+         */
         protected $file;
 
         /**
@@ -1116,7 +1160,13 @@
      */
     class Clientside_Error extends Exception
     {
+        /**
+         * @var int
+         */
         protected $line;
+        /**
+         * @var string
+         */
         protected $file;
 
         /**
@@ -1139,10 +1189,19 @@
         }
     }
 
-    class Client_Type
+/**
+ *
+ */
+class Client_Type
     {
-        const USER = "User";
-        const SYSTEM = "System";
+    /**
+     *
+     */
+    const USER = "User";
+    /**
+     *
+     */
+    const SYSTEM = "System";
     }
 
     /**
@@ -1157,16 +1216,31 @@
     class Query_Client
     {
         // Client type (either system or user)
+        /**
+         * @var string|null
+         */
         private $client_type;
         
         // member_ID, only used for user clients
+        /**
+         * @var int|null
+         */
         private $member_ID = null;
 
         // club_ID, only used for user clients
+        /**
+         * @var mixed|null
+         */
         private $club_ID = null;
 
         // Singleton instances of system and user clients
+        /**
+         * @var null
+         */
         private static $system_instance = null;
+        /**
+         * @var null
+         */
         private static $user_instance = null;
 
         /**
@@ -1249,31 +1323,55 @@
             }
         }
 
+        /**
+         * @param int $member_ID
+         * @return Query_Client|null
+         */
         public static function get_user_instance(int $member_ID)
         {
+            // Get a singleton instance of the system client
             $system = Query_Client::get_system_instance();
+
 
             try
             {
+                // If a user instance doesn't exist yet, create one
                 if (self::$user_instance == null)
                 {
+                    // Check that the member ID exists in the MEMBERS table
                     if (Validation::check_member_ID_exists($member_ID))
                     {
+                        // Create a new user instance and return it
                         self::$user_instance = new Query_Client(Client_Type::USER, $member_ID);
                         return self::$user_instance;
                     }
                     else
                     {
+                        // Throw an error if the member ID does not exist
                         throw new System_Error(0, "Query_Client->member_ID not found in MEMBERS table.", __LINE__);
                     }
                 }
-                else if (($member_ID == self::$user_instance->get_member_ID()) or ($member_ID == Guardianships::read_parent_from_child($system, self::$user_instance->get_member_ID())))
-                {
-                    return self::$user_instance;
-                }
                 else
                 {
-                    throw new System_Error(0, "member_ID passed to get_user_instance doesn't match current USER instance.", __LINE__);
+                    // Get an array of children from the parent user instance (this can be empty)
+                    $children = Guardianships::read_children_from_parent($system, self::$user_instance->get_member_ID())->get_result_as_assoc_array();
+
+                    // Get only the child IDs from the array of children
+                    foreach ($children as &$child)
+                    {
+                        $child = $child["child_ID"];
+                    }
+
+                    // If the member ID is the same as the current user instance or is a child of the parent user instance, return the user instance
+                    if (($member_ID == self::$user_instance->get_member_ID()) or (in_array($member_ID, $children)))
+                    {
+                        return self::$user_instance;
+                    }
+                    else
+                    {
+                        // Throw an error if the member ID passed in does not match the current user instance or its children
+                        throw new System_Error(0, "member_ID passed to get_user_instance doesn't match current USER instance.", __LINE__);
+                    }
                 }
             }
             catch(Throwable $error)
@@ -1283,10 +1381,14 @@
             }
         }
 
+        /**
+         * @return string|null
+         */
         public function get_client_type()
         {
             try
             {
+                // Return the value of the client_type property of the object instance
                 return $this->client_type;
             }
             catch(Throwable $error)
@@ -1296,10 +1398,14 @@
             }
         }
 
+        /**
+         * @return int|null
+         */
         public function get_member_ID()
         {
             try
             {
+                // Return the value of the member_ID property of the object instance
                 return $this->member_ID;
             }
             catch(Throwable $error)
@@ -1309,10 +1415,14 @@
             }
         }
 
+        /**
+         * @return mixed|null
+         */
         public function get_club_ID()
         {
             try
             {
+                // Return the value of the club_ID property of the object instance
                 return $this->club_ID;
             }
             catch(Throwable $error)
@@ -1325,9 +1435,17 @@
 
     //CRUD operations for each database class
 
+    /** 
+     * This class provides static methods to create, read, update and delete availability records in the database. 
+     */
     class Availability
     {
-        const USER_READ_SQL = 
+        // Start of SQL query used for selecting availability records as Client_Type::USER
+        // This is for consistency across methods, so the same fields are retrieved
+        /**
+         *
+         */
+        const USER_READ_SQL =
             "SELECT AVAILABILITY.availability_ID, AVAILABILITY.participating, 
             CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name,     
                 TEAMS.team_name, EVENTS.event_name,  
@@ -1353,12 +1471,20 @@
             INNER JOIN `EVENT_TYPES` 
                 ON EVENTS.event_type_ID = EVENT_TYPES.event_type_ID ";
 
-        //CRUD SQL Functions
-
+        /**
+         * Creates an availability record for a team member for a given event.
+         *
+         * @param Query_Client $client The client object used to connect to the database.
+         * @param int $team_member_ID
+         * @param int $event_ID
+         * @param int $available
+         * @return Query|null
+         */
         public static function create_availability(Query_Client $client, int $team_member_ID, int $event_ID, int $available)
         {
             try
             {
+                // Check client type
                 if ($client->get_client_type() == Client_Type::USER)
                 {
                     //Check if team_member_ID belongs to the $client
@@ -1372,6 +1498,7 @@
                     $params = [$team_member_ID, $event_ID, $available];
                     $param_types = "iii";
 
+                    // Create and return query object
                     $create_availability = new Query($sql, $params, $param_types);
                     return $create_availability;
                 }
@@ -1385,11 +1512,13 @@
                     $params = [$team_member_ID, $event_ID, $available];
                     $param_types = "iii";
 
+                    // Create and return query object
                     $create_availability = new Query($sql, $params, $param_types);
                     return $create_availability;
                 }
                 else
                 {
+                    // Throw error if client type is unrecognized
                     throw new System_Error(0, "Query_Client passed as arg to create_availability() has unrecognised Client_Type.", __LINE__);
                 }
             }
@@ -1400,14 +1529,25 @@
             }
         }
 
+        /**
+         * Reads the availability of a team member for a specific event.
+         *
+         * @param Query_Client $client The client object used to connect to the database.
+         * @param int $team_member_ID
+         * @param int $event_ID
+         * @return Query|null Returns the Query object if successful; if an error occurs returns null.
+         */
         public static function read_availability(Query_Client $client, int $team_member_ID, int $event_ID)
         {
             try
             {
+                // USER Client_Type
                 if ($client->get_client_type() == Client_Type::USER)
                 {
+                    // Get the club ID of the client
                     $client_club_ID = $client->get_club_ID();
 
+                    // Construct SQL query to read availability record and check that the club ID matches the client's club ID
                     $sql = 
                         self::USER_READ_SQL . 
                         "WHERE (AVAILABILITY.team_member_ID = ? AND AVAILABILITY.event_ID = ? AND CLUBS.club_ID = ?);";
@@ -1415,6 +1555,7 @@
                     $params = [$team_member_ID, $event_ID, $client_club_ID];
                     $param_types = "iii";
 
+                    // Create and return query object
                     $read_availability = new Query($sql, $params, $param_types);
                     return $read_availability;
                 }
@@ -1443,6 +1584,14 @@
             }
         }
 
+        /**
+         * Update the availabile column of an availability record.
+         *
+         * @param Query_Client $client The client object used to connect to the database.
+         * @param int $availability_ID
+         * @param int $available
+         * @return Query|null Returns the Query object if successful; if an error occurs returns null.
+         */
         public static function update_availability(Query_Client $client, int $availability_ID, int $available)
         {
             try
@@ -1491,6 +1640,14 @@
             }
         }
 
+        /**
+         * Update the participating column of an availability record.
+         *
+         * @param Query_Client $client The client object used to connect to the database.
+         * @param int $availability_ID availability_ID of availability record.
+         * @param int $participating Boolean flag for 
+         * @return Query|null Returns the Query object if successful; if an error occurs returns null.
+         */
         public static function update_participation(Query_Client $client, int $availability_ID, int $participating)
         {
             try
@@ -1539,11 +1696,20 @@
             }
         }
 
-        //delete_availability() does not exist, as once created an availability should not be removed
+        //delete_availability() does not exist, as once created an availability should not be removed.
 
         //Specialised SQL Functions
 
         //$is_available is used to filter to only available/unavailable teammembers
+        /**
+         * Reads the availabilities from the event for the given client.
+         *
+         * @param Query_Client $client
+         * @param int $event_ID
+         * @param int|null $is_available
+         * @return Query|null
+         * @throws System_Error
+         */
         public static function read_availabilities_from_event(Query_Client $client, int $event_ID, int $is_available = null)
         {
             try
@@ -1554,7 +1720,7 @@
 
                     $club_ID = $client->get_club_ID();
 
-                    $sql .= "   SELECT AVAILABILITY.availability_ID, AVAILABILITY.participating, 
+                    $sql = "   SELECT AVAILABILITY.availability_ID, AVAILABILITY.participating, 
                                 CONCAT(MEMBERS.member_fname, ' ', MEMBERS.member_lname) AS member_whole_name 
                                 FROM `AVAILABILITY` 
                                 INNER JOIN `TEAM_MEMBERS` 
@@ -1617,6 +1783,14 @@
                 }
                 else
                 {
+        /**
+         * Reads availabilities from a member using the provided Query_Client and member ID.
+         *
+         * @param Query_Client $client The Query_Client to use for the query.
+         * @param int $member_ID The ID of the member to retrieve availabilities for.
+         * @return mixed|null Returns the result of the query or null if an error occurred.
+         * @throws System_Error If the Query_Client passed as an argument has an unrecognized Client_Type.
+         */
                     throw new System_Error(0, "Query_Client passed as arg to read_availabilities_from_event() has unrecognised Client_Type.", __LINE__);
                 }
             }
@@ -1626,6 +1800,12 @@
                 return null;
             }
         }
+
+        /**
+         * @param Query_Client $client
+         * @param $member_ID
+         * @return Query|null
+         */
         public static function read_availabilities_from_member(Query_Client $client, $member_ID)
         {
             try
@@ -1695,6 +1875,11 @@
             }
         }
 
+        /**
+         * @param Query_Client $client
+         * @param int $event_ID
+         * @return Query|null
+         */
         public static function read_participants_from_event(Query_Client $client, int $event_ID)
         {
             try
@@ -1743,11 +1928,19 @@
         }
     }
 
-    class Clubs
+/**
+ *
+ */
+class Clubs
     {
         //CRUD SQL Functions
 
-        public static function create_club(Query_Client $client, string $club_name)
+    /**
+     * @param Query_Client $client
+     * @param string $club_name
+     * @return Query|null
+     */
+    public static function create_club(Query_Client $client, string $club_name)
         {
             try
             {
@@ -1781,7 +1974,12 @@
             }
         }
 
-        public static function read_club(Query_Client $client, int $club_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $club_ID
+     * @return Query|null
+     */
+    public static function read_club(Query_Client $client, int $club_ID)
         {
             try
             {
@@ -1839,7 +2037,13 @@
             }
         }
 
-        public static function update_club(Query_Client $client, int $club_ID, string $club_name)
+    /**
+     * @param Query_Client $client
+     * @param int $club_ID
+     * @param string $club_name
+     * @return Query|null
+     */
+    public static function update_club(Query_Client $client, int $club_ID, string $club_name)
         {
             try
             {
@@ -1905,7 +2109,12 @@
             }
         }
 
-        public static function delete_club(Query_Client $client, $club_ID)
+    /**
+     * @param Query_Client $client
+     * @param $club_ID
+     * @return Query|null
+     */
+    public static function delete_club(Query_Client $client, $club_ID)
         {
             try
             {
@@ -1940,7 +2149,12 @@
 
         //Specialised SQL Functions
 
-        public static function read_club_from_member(Query_Client $client, int $member_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $member_ID
+     * @return Query|null
+     */
+    public static function read_club_from_member(Query_Client $client, int $member_ID)
         {
             try
             {
@@ -1974,7 +2188,12 @@
             }
         }
 
-        public static function read_club_from_team_member(Query_Client $client, int $team_member_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $team_member_ID
+     * @return Query|null
+     */
+    public static function read_club_from_team_member(Query_Client $client, int $team_member_ID)
         {
             try
             {
@@ -2010,7 +2229,12 @@
             }
         }
 
-        public static function read_club_from_team(Query_Client $client, int $team_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $team_ID
+     * @return Query|null
+     */
+    public static function read_club_from_team(Query_Client $client, int $team_ID)
         {
             try
             {
@@ -2044,7 +2268,11 @@
             }
         }
 
-        public static function read_all_clubs(Query_Client $client)
+    /**
+     * @param Query_Client $client
+     * @return Query|null
+     */
+    public static function read_all_clubs(Query_Client $client)
         {
             try
             {
@@ -2078,9 +2306,15 @@
         }
     }
 
-    class Events
+/**
+ *
+ */
+class Events
     {
-        const USER_READ_SQL = 
+    /**
+     *
+     */
+    const USER_READ_SQL =
             "SELECT EVENTS.event_name, EVENT_TYPES.event_type_name, 
             CONCAT(DATE_FORMAT(event_date, '%d'), '/',
                 DATE_FORMAT(event_date, '%m'), '/',
@@ -2099,7 +2333,19 @@
             INNER JOIN `CLUBS` 
                 ON TEAMS.club_ID = CLUBS.club_ID ";
 
-        public static function create_event(Query_Client $client, string $event_name, int $team_ID, int $event_type_ID, string $event_date, string $event_meet_time, string $event_start_time, string $event_location, string $event_description)
+    /**
+     * @param Query_Client $client
+     * @param string $event_name
+     * @param int $team_ID
+     * @param int $event_type_ID
+     * @param string $event_date
+     * @param string $event_meet_time
+     * @param string $event_start_time
+     * @param string $event_location
+     * @param string $event_description
+     * @return Query|null
+     */
+    public static function create_event(Query_Client $client, string $event_name, int $team_ID, int $event_type_ID, string $event_date, string $event_meet_time, string $event_start_time, string $event_location, string $event_description)
         {
             try
             {
@@ -2151,7 +2397,12 @@
             }
         }
 
-        public static function read_event(Query_Client $client, int $event_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $event_ID
+     * @return Query|null
+     */
+    public static function read_event(Query_Client $client, int $event_ID)
         {
             try
             {
@@ -2193,7 +2444,19 @@
             }
         }
 
-        public static function update_event(Query_Client $client, int $event_ID, string $event_name, int $event_type_ID, string $event_date, string $event_meet_time, string $event_start_time, string $event_location, string $event_description)
+    /**
+     * @param Query_Client $client
+     * @param int $event_ID
+     * @param string $event_name
+     * @param int $event_type_ID
+     * @param string $event_date
+     * @param string $event_meet_time
+     * @param string $event_start_time
+     * @param string $event_location
+     * @param string $event_description
+     * @return Query|null
+     */
+    public static function update_event(Query_Client $client, int $event_ID, string $event_name, int $event_type_ID, string $event_date, string $event_meet_time, string $event_start_time, string $event_location, string $event_description)
         {
             try
             {
@@ -2255,7 +2518,12 @@
             }
         }
 
-        public static function delete_event(Query_Client $client, int $event_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $event_ID
+     * @return Query|null
+     */
+    public static function delete_event(Query_Client $client, int $event_ID)
         {
             try
             {
@@ -2304,7 +2572,12 @@
 
         //Specialised SQL functions
 
-        public static function read_events_from_team(Query_Client $client, int $team_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $team_ID
+     * @return Query|null
+     */
+    public static function read_events_from_team(Query_Client $client, int $team_ID)
         {
             try
             {
@@ -2354,7 +2627,12 @@
             }
         }
 
-        public static function read_events_from_member(Query_Client $client, int $member_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $member_ID
+     * @return Query|void|null
+     */
+    public static function read_events_from_member(Query_Client $client, int $member_ID)
         {
             try
             {
@@ -2434,7 +2712,13 @@
         }
 
         //read_events_from_member_explicit only gets the events for that member, not including children
-        public static function read_events_from_member_explicit(Query_Client $client, int $member_ID)
+
+    /**
+     * @param Query_Client $client
+     * @param int $member_ID
+     * @return Query|void|null
+     */
+    public static function read_events_from_member_explicit(Query_Client $client, int $member_ID)
         {
             try
             {
@@ -2505,13 +2789,29 @@
         }
     }
 
-    class Event_Types
+/**
+ *
+ */
+class Event_Types
     {
-        const USER_READ_SQL = 
+    /**
+     *
+     */
+    const USER_READ_SQL =
             "SELECT `event_type_name`, `event_gender_restriction`, `min_age`, `max_age`, `event_type_description` 
             FROM `EVENT_TYPES` ";
 
-        public static function create_event_type(Query_Client $client, string $event_type_name, int $club_ID, string $event_gender_restriction, int $min_age, int $max_age, string $event_type_description)
+    /**
+     * @param Query_Client $client
+     * @param string $event_type_name
+     * @param int $club_ID
+     * @param string $event_gender_restriction
+     * @param int $min_age
+     * @param int $max_age
+     * @param string $event_type_description
+     * @return Query|null
+     */
+    public static function create_event_type(Query_Client $client, string $event_type_name, int $club_ID, string $event_gender_restriction, int $min_age, int $max_age, string $event_type_description)
         {
             try
             {
@@ -2567,7 +2867,12 @@
             }
         }
 
-        public static function read_event_type(Query_Client $client, int $event_type_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $event_type_ID
+     * @return Query|null
+     */
+    public static function read_event_type(Query_Client $client, int $event_type_ID)
         {
             try
             {
@@ -2609,7 +2914,17 @@
             }
         }
 
-        public static function update_event_type(Query_Client $client, int $event_type_ID, string $event_type_name, string $event_gender_restriction, int $min_age, int $max_age, string $event_type_description)
+    /**
+     * @param Query_Client $client
+     * @param int $event_type_ID
+     * @param string $event_type_name
+     * @param string $event_gender_restriction
+     * @param int $min_age
+     * @param int $max_age
+     * @param string $event_type_description
+     * @return Query|null
+     */
+    public static function update_event_type(Query_Client $client, int $event_type_ID, string $event_type_name, string $event_gender_restriction, int $min_age, int $max_age, string $event_type_description)
         {
             try
             {
@@ -2665,7 +2980,12 @@
             }
         }
 
-        public static function delete_event_type(Query_Client $client, $event_type_ID)
+    /**
+     * @param Query_Client $client
+     * @param $event_type_ID
+     * @return Query|null
+     */
+    public static function delete_event_type(Query_Client $client, $event_type_ID)
         {
             try
             {
@@ -2714,7 +3034,12 @@
 
         //Custom SQL functions
 
-        public static function read_event_types_from_club(Query_Client $client, int $club_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $club_ID
+     * @return Query|null
+     */
+    public static function read_event_types_from_club(Query_Client $client, int $club_ID)
         {
             try
             {
@@ -2764,9 +3089,18 @@
 
     }
 
-    class Guardianships
+/**
+ *
+ */
+class Guardianships
     {
-        public static function create_guardianship(Query_Client $client, int $parent_ID, int $child_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $parent_ID
+     * @param int $child_ID
+     * @return Query|null
+     */
+    public static function create_guardianship(Query_Client $client, int $parent_ID, int $child_ID)
         {
             try
             {
@@ -2815,7 +3149,12 @@
             }
         }
 
-        public static function read_guardianship(Query_Client $client, int $guardianship_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $guardianship_ID
+     * @return Query|null
+     */
+    public static function read_guardianship(Query_Client $client, int $guardianship_ID)
         {
             //Users do not need to be able to view guardianship pairs
             try
@@ -2849,7 +3188,13 @@
             }
         }
 
-        public static function update_guardianship(Query_Client $client, int $guardianship_ID, int $valid)
+    /**
+     * @param Query_Client $client
+     * @param int $guardianship_ID
+     * @param int $valid
+     * @return Query|null
+     */
+    public static function update_guardianship(Query_Client $client, int $guardianship_ID, int $valid)
         {
             //Only system may need to update valid field in a GUARDIANSHIP
 
@@ -2885,7 +3230,12 @@
             }
         }
 
-        public static function delete_guardianship(Query_Client $client, int $guardianship_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $guardianship_ID
+     * @return Query|null
+     */
+    public static function delete_guardianship(Query_Client $client, int $guardianship_ID)
         {
             //Only system should be able to delete a guardianship
             //In normal circumstances the guardianship should just be invalidated
@@ -2922,7 +3272,12 @@
 
         //Custom SQL functions
 
-        public static function read_parent_from_child(Query_Client $client, int $child_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $child_ID
+     * @return Query|null
+     */
+    public static function read_parent_from_child(Query_Client $client, int $child_ID)
         {
             try
             {
@@ -2966,7 +3321,12 @@
             }
         }
 
-        public static function read_children_from_parent(Query_Client $client, int $parent_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $parent_ID
+     * @return Query|null
+     */
+    public static function read_children_from_parent(Query_Client $client, int $parent_ID)
         {
             try
             {
@@ -3010,7 +3370,13 @@
             }
         }
 
-        public static function update_parent_from_child(Query_Client $client, int $child_ID, int $parent_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $child_ID
+     * @param int $parent_ID
+     * @return Query|null
+     */
+    public static function update_parent_from_child(Query_Client $client, int $child_ID, int $parent_ID)
         {
             try
             {
@@ -3043,7 +3409,12 @@
             }
         }
 
-        public static function delete_guardianship_from_child(Query_Client $client, int $child_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $child_ID
+     * @return Query|null
+     */
+    public static function delete_guardianship_from_child(Query_Client $client, int $child_ID)
         {
             //Only system should be able to delete a guardianship
             //In normal circumstances the guardianship should just be invalidated
@@ -3079,9 +3450,24 @@
         }
     }
 
-    class Members
+/**
+ *
+ */
+class Members
     {
-        public static function create_member(Query_Client $client, int $club_ID, string $member_fname, string $member_lname, string $member_DOB, string $member_gender, string $member_email, string $hashed_member_password, int $admin = null)
+    /**
+     * @param Query_Client $client
+     * @param int $club_ID
+     * @param string $member_fname
+     * @param string $member_lname
+     * @param string $member_DOB
+     * @param string $member_gender
+     * @param string $member_email
+     * @param string $hashed_member_password
+     * @param int|null $admin
+     * @return Query|null
+     */
+    public static function create_member(Query_Client $client, int $club_ID, string $member_fname, string $member_lname, string $member_DOB, string $member_gender, string $member_email, string $hashed_member_password, int $admin = null)
         {
             //Only system can create a member (through sign-up form)
 
@@ -3116,7 +3502,12 @@
             }
         }
 
-        public static function read_member(Query_Client $client, int $member_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $member_ID
+     * @return Query|null
+     */
+    public static function read_member(Query_Client $client, int $member_ID)
         {
             try
             {
@@ -3161,7 +3552,20 @@
             }
         }
 
-        public static function update_member(Query_Client $client, int $member_ID, int $club_ID, string $member_fname, string $member_lname, string $member_DOB, string $member_gender, string $member_email, int $member_admin, string $hashed_member_password)
+    /**
+     * @param Query_Client $client
+     * @param int $member_ID
+     * @param int $club_ID
+     * @param string $member_fname
+     * @param string $member_lname
+     * @param string $member_DOB
+     * @param string $member_gender
+     * @param string $member_email
+     * @param int $member_admin
+     * @param string $hashed_member_password
+     * @return Query|null
+     */
+    public static function update_member(Query_Client $client, int $member_ID, int $club_ID, string $member_fname, string $member_lname, string $member_DOB, string $member_gender, string $member_email, int $member_admin, string $hashed_member_password)
         {
             try
             {
@@ -3242,7 +3646,12 @@
             }
         }
 
-        public static function delete_member(Query_Client $client, int $member_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $member_ID
+     * @return Query|null
+     */
+    public static function delete_member(Query_Client $client, int $member_ID)
         {
             try
             {
@@ -3304,7 +3713,12 @@
 
         //Custom SQL functions
 
-        public static function read_members_from_club(Query_Client $client, int $club_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $club_ID
+     * @return Query|null
+     */
+    public static function read_members_from_club(Query_Client $client, int $club_ID)
         {
             try
             {
@@ -3362,7 +3776,12 @@
             }
         }
 
-        public static function read_members_from_team(Query_Client $client, int $team_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $team_ID
+     * @return Query|null
+     */
+    public static function read_members_from_team(Query_Client $client, int $team_ID)
         {
             try
             {
@@ -3413,7 +3832,13 @@
             }
         }
 
-        public static function member_login(Query_Client $client, string $member_email, string $hashed_member_password)
+    /**
+     * @param Query_Client $client
+     * @param string $member_email
+     * @param string $hashed_member_password
+     * @return Query|null
+     */
+    public static function member_login(Query_Client $client, string $member_email, string $hashed_member_password)
         {
             try
             {
@@ -3447,10 +3872,16 @@
         }
     }
 
-    
-    class Roles
+
+/**
+ *
+ */
+class Roles
     {
-        public static function read_all_roles()
+    /**
+     * @return Query|null
+     */
+    public static function read_all_roles()
         {
             try
             {
@@ -3472,10 +3903,19 @@
         }
     }
 
-    class Teams
+/**
+ *
+ */
+class Teams
     {
 
-        public static function create_team(Query_Client $client, string $team_name, int $club_ID)
+    /**
+     * @param Query_Client $client
+     * @param string $team_name
+     * @param int $club_ID
+     * @return Query|void|null
+     */
+    public static function create_team(Query_Client $client, string $team_name, int $club_ID)
         {
             try
             {
@@ -3522,7 +3962,12 @@
             }
         }
 
-        public static function read_team(Query_Client $client, string $team_ID)
+    /**
+     * @param Query_Client $client
+     * @param string $team_ID
+     * @return Query|null
+     */
+    public static function read_team(Query_Client $client, string $team_ID)
         {
             try
             {
@@ -3564,7 +4009,14 @@
             }
         }
 
-        public static function update_team(Query_Client $client, int $team_ID, string $team_name, string $team_nickname)
+    /**
+     * @param Query_Client $client
+     * @param int $team_ID
+     * @param string $team_name
+     * @param string $team_nickname
+     * @return Query|null
+     */
+    public static function update_team(Query_Client $client, int $team_ID, string $team_name, string $team_nickname)
         {
             try
             {
@@ -3617,7 +4069,12 @@
             }
         }
 
-        public static function delete_team(Query_Client $client, int $team_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $team_ID
+     * @return Query|null
+     */
+    public static function delete_team(Query_Client $client, int $team_ID)
         {
             try
             {
@@ -3651,7 +4108,12 @@
 
         //Custom SQL functions
 
-        public static function read_teams_from_member(Query_Client $client, int $member_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $member_ID
+     * @return Query|null
+     */
+    public static function read_teams_from_member(Query_Client $client, int $member_ID)
         {
             try
             {
@@ -3697,7 +4159,12 @@
             }
         }
 
-        public static function read_teams_from_team_admin(Query_Client $client, int $member_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $member_ID
+     * @return Query|null
+     */
+    public static function read_teams_from_team_admin(Query_Client $client, int $member_ID)
         {
             try
             {
@@ -3751,7 +4218,12 @@
             }
         }
 
-        public static function read_teams_from_club(Query_Client $client, int $club_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $club_ID
+     * @return Query|null
+     */
+    public static function read_teams_from_club(Query_Client $client, int $club_ID)
         {  
             try
             {
@@ -3800,7 +4272,12 @@
             }
         }
 
-        public static function read_team_from_event(Query_Client $client, int $event_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $event_ID
+     * @return Query|null
+     */
+    public static function read_team_from_event(Query_Client $client, int $event_ID)
         {
             try
             {
@@ -3846,7 +4323,12 @@
             }
         }
 
-        public static function read_team_from_availability(Query_Client $client, int $availability_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $availability_ID
+     * @return Query|null
+     */
+    public static function read_team_from_availability(Query_Client $client, int $availability_ID)
         {
             try
             {
@@ -3881,7 +4363,12 @@
             }
         }
 
-        public static function read_team_from_participation(Query_Client $client, int $participant_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $participant_ID
+     * @return Query|null
+     */
+    public static function read_team_from_participation(Query_Client $client, int $participant_ID)
         {
             try
             {
@@ -3917,9 +4404,19 @@
         }
     }
 
-    class Team_Members
+/**
+ *
+ */
+class Team_Members
     {
-        public static function create_team_member(Query_Client $client, int $member_ID, int $team_ID, int $role_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $member_ID
+     * @param int $team_ID
+     * @param int $role_ID
+     * @return Query|null
+     */
+    public static function create_team_member(Query_Client $client, int $member_ID, int $team_ID, int $role_ID)
         {
             try
             {
@@ -3979,7 +4476,12 @@
             }
         }
 
-        public static function read_team_member(Query_Client $client, int $team_member_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $team_member_ID
+     * @return Query|null
+     */
+    public static function read_team_member(Query_Client $client, int $team_member_ID)
         {
             try
             {
@@ -4038,8 +4540,14 @@
                 return null;
             }
         }
-        
-        public static function update_team_member(Query_Client $client, int $team_member_ID, int $role_ID)
+
+    /**
+     * @param Query_Client $client
+     * @param int $team_member_ID
+     * @param int $role_ID
+     * @return Query|null
+     */
+    public static function update_team_member(Query_Client $client, int $team_member_ID, int $role_ID)
         {
             try
             {
@@ -4099,7 +4607,12 @@
             }
         }
 
-        public static function delete_team_member(Query_Client $client, int $team_member_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $team_member_ID
+     * @return Query|null
+     */
+    public static function delete_team_member(Query_Client $client, int $team_member_ID)
         {
             try
             {
@@ -4159,7 +4672,12 @@
 
         //Custom SQL functions
 
-        public static function read_team_from_team_member(Query_Client $client, int $team_member_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $team_member_ID
+     * @return Query|null
+     */
+    public static function read_team_from_team_member(Query_Client $client, int $team_member_ID)
         {
             try
             {
@@ -4214,7 +4732,12 @@
             }
         }
 
-        public static function read_team_members_from_member(Query_Client $client, int $member_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $member_ID
+     * @return Query|null
+     */
+    public static function read_team_members_from_member(Query_Client $client, int $member_ID)
         {
             try
             {
@@ -4246,7 +4769,13 @@
                 return null;
             }
         }
-        public static function read_member_from_team_member(Query_Client $client, int $team_member_ID)
+
+    /**
+     * @param Query_Client $client
+     * @param int $team_member_ID
+     * @return Query|null
+     */
+    public static function read_member_from_team_member(Query_Client $client, int $team_member_ID)
         {
             try
             {
@@ -4301,7 +4830,13 @@
             }
         }
 
-        public static function read_team_member_from_member_and_team(Query_Client $client, int $member_ID, int $team_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $member_ID
+     * @param int $team_ID
+     * @return Query|null
+     */
+    public static function read_team_member_from_member_and_team(Query_Client $client, int $member_ID, int $team_ID)
         {
             try
             {
@@ -4334,7 +4869,14 @@
             }
         }
 
-        public static function update_team_member_from_member_and_team(Query_Client $client, int $member_ID, int $team_ID, int $role_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $member_ID
+     * @param int $team_ID
+     * @param int $role_ID
+     * @return Query|null
+     */
+    public static function update_team_member_from_member_and_team(Query_Client $client, int $member_ID, int $team_ID, int $role_ID)
         {
             try
             {
@@ -4394,7 +4936,13 @@
             }
         }
 
-        public static function delete_team_member_from_member_and_team(Query_Client $client, int $member_ID, int $team_ID)
+    /**
+     * @param Query_Client $client
+     * @param int $member_ID
+     * @param int $team_ID
+     * @return Query|null
+     */
+    public static function delete_team_member_from_member_and_team(Query_Client $client, int $member_ID, int $team_ID)
         {
             try
             {
@@ -4454,12 +5002,25 @@
 
     }
 
+    /**
+     * Class containing static methods for consistent validation across the database CRUD methods.
+     * 
+     * It is important to note there are numerous cases where it is only possible to provide validation within the SQL query itself, however these static methods should be used wherever possible.
+     */
     class Validation
     {
+        /**
+         * Check if a club_ID exists in the database.
+         * 
+         * @param int $club_ID The club_ID to check.
+         * 
+         * @return bool|null True if club_ID exists; false if club_ID does not exist; null if an error occurs.
+         */
         public static function check_club_ID_exists(int $club_ID)
         {
             try
             {
+                // SQL query to select club_ID from CLUBS
                 $sql = 
                     "SELECT `club_ID` 
                     FROM `CLUBS` 
@@ -4470,6 +5031,9 @@
 
                 $check_club_ID = new Query($sql, $params, $param_types);
 
+                // Check if the result is null
+                // If the result is null, the club_ID cannot exist in the database
+                // In default case return null (unknown case)
                 switch ($check_club_ID->check_null_result())
                 {
                     case false:
@@ -4483,13 +5047,21 @@
             catch(Throwable $error)
             {
                 new Error_Handler($error);
+                return null;
             }
         }
 
+        /**
+         * Check if a member ID exists in the database.
+         *
+         * @param int $member_ID The member ID to check.
+         * @return bool|null True if the member ID exists; false if it does not; null if error occurs.
+         */
         public static function check_member_ID_exists(int $member_ID)
         {
             try
             {
+                // SQL query to select member_ID from MEMBERS
                 $sql = 
                     "SELECT `member_ID` 
                     FROM `MEMBERS` 
@@ -4500,6 +5072,9 @@
 
                 $check_member_ID = new Query($sql, $params, $param_types);
 
+                // Check if the result is null
+                // If the result is null, the member_ID cannot exist in the database
+                // In default case return null (unknown case)
                 switch ($check_member_ID->check_null_result())
                 {
                     case false:
@@ -4513,45 +5088,26 @@
             catch(Throwable $error)
             {
                 new Error_Handler($error);
+                return null;
             }
         }
 
+        /**
+         * Check if a member is part of a team.
+         *
+         * @param Query_Client $client The client performing the action (must be of type SYSTEM).
+         * @param int $member_ID The member_ID to check.
+         * @param int $team_ID The team_ID to check.
+         * 
+         * @return bool|null True if team_member record exists; false if team_member record does not exist; null if error occurs.
+         */
         public static function check_team_member(Query_Client $client, int $member_ID, int $team_ID)
         {
             try
             {
-                if ($client->get_client_type() == Client_Type::USER)
+                if ($client->get_client_type() == Client_Type::SYSTEM) 
                 {
-                    if ($member_ID == $client->get_member_ID())
-                    {
-                        $sql = 
-                            "SELECT DISTINCT `team_member_ID` 
-                                FROM `TEAM_MEMBERS` 
-                            WHERE (member_ID = ? 
-                                AND team_ID = ?);";
-
-                        $params = [$member_ID, $team_ID];
-                        $param_types = "ii";
-
-                        $check_team_member = new Query($sql, $params, $param_types);
-
-                        switch ($check_team_member->check_null_result())
-                        {
-                            case false:
-                                return true;
-                            case true:
-                                return false;
-                            default:
-                                return null;
-                        }
-                    }
-                    else
-                    {
-                        throw new System_Error(0, "Client member_ID does not match the arg member_ID.", __LINE__);
-                    }
-                }
-                else if ($client->get_client_type() == Client_Type::SYSTEM) 
-                {
+                    // SQL query to select team_member_ID from TEAM_MEMBERS table where member_ID and team_ID match the given IDs
                     $sql = 
                         "SELECT DISTINCT `team_member_ID` 
                         FROM `TEAM_MEMBERS` 
@@ -4562,6 +5118,9 @@
 
                     $check_team_member = new Query($sql, $params, $param_types);
 
+                    // Check if the result is null
+                    // If the result is null, the team_member_ID cannot exist in the database
+                    // In default case return null (unknown case)
                     switch ($check_team_member->check_null_result())
                     {
                         case true:
@@ -4571,6 +5130,10 @@
                         default:
                             return null;
                     }
+                }
+                else if ($client->get_client_type() == Client_Type::USER)
+                {
+                    throw new System_Error(0, "Query_Client does not have permission to perform this action.", __LINE__);
                 }
                 else
                 {
@@ -4584,23 +5147,41 @@
             }
         }
 
+        /**
+         * Check if a given member is a team admin. 
+         * 
+         * If $team_ID is left null, the function checks if the member is a team admin of any team.
+         * 
+         * If $team_ID is assigned a value, the function checks if the member is a team admin of that specific team.
+         *
+         * @param Query_Client $client The client performing the query.
+         * 
+         * @param int $member_ID The member ID to check for admin status.
+         * @param int|null $team_ID The team ID to check for admin status (optional).
+         * 
+         * @return bool|null True if the member is a team admin, false if not, and null in case of an error.
+         */
         public static function check_team_admin(Query_Client $client, int $member_ID, int $team_ID = null)
         {
             try
             {
+                // Initialize the boolean flag team_admin variable 
                 $team_admin = false;
 
                 if ($client->get_client_type() == Client_Type::SYSTEM)
                 {
+                    // If the client is SYSTEM, consider the member as an automatic team admin
                     $team_admin = true;
                     return $team_admin;
                 }
                 else if ($client->get_client_type() == Client_Type::USER)
                 {
+                    // If the team_ID is not provided, search for admin status in any team
                     if ($team_ID == null)
                     {
+                        // SQL query to select team_admin status from TEAM_MEMBERS and ROLES tables where member_ID matches the given member_ID
                         $sql = 
-                            "SELECT ROLES.team_admin 
+                            "SELECT DISTINCT ROLES.team_admin 
                                 FROM `TEAM_MEMBERS`
                             INNER JOIN `ROLES` 
                                 ON TEAM_MEMBERS.role_ID = ROLES.role_ID 
@@ -4609,10 +5190,12 @@
                         $params = [$member_ID];
                         $param_types = "i";
                     }
+                    // If the team_ID is provided, search for admin status in the specific team
                     else
                     {
+                        // SQL query to select team_admin status from TEAM_MEMBERS and ROLES tables where member_ID and team_ID match the given IDs
                         $sql = 
-                            "SELECT ROLES.team_admin 
+                            "SELECT DISTINCT ROLES.team_admin 
                                 FROM `TEAM_MEMBERS`
                             INNER JOIN `ROLES` 
                                 ON TEAM_MEMBERS.role_ID = ROLES.role_ID 
@@ -4625,6 +5208,7 @@
 
                     $is_team_admin = new Query($sql, $params, $param_types);
 
+                    // As only one value can be selected, check first item in multi-dimensional result array
                     switch ($is_team_admin->get_result_as_indexed_array()[0][0])
                     {
                         case 0:
@@ -4648,23 +5232,36 @@
             }
         }
 
+        /**
+         * Check if a member is a club admin.
+         *
+         * @param Query_Client $client The client performing the query.
+         * 
+         * @param int $member_ID The member ID to check for club admin status.
+         * 
+         * @return bool|null True if the member is a club admin; false if member is not a club admin; null if an error occurs.
+         */
         public static function check_club_admin(Query_Client $client, int $member_ID)
         {
             try
             {
+                // Initialize the boolean flag club admin variable
                 $admin = false;
 
                 if ($client->get_client_type() == Client_Type::SYSTEM)
                 {
+                    // If the client is of type SYSTEM, consider the member as an automatic club admin
                     $admin = true;
                     return $admin;
                 }
                 else if ($client->get_client_type() == Client_Type::USER)
                 {
+                    // Check if the member_ID of the client matches the provided member_ID (identity checking)
                     if ($member_ID == $client->get_member_ID())
                     {
+                        // SQL query to select admin status from MEMBERS table
                         $sql = 
-                            "SELECT admin 
+                            "SELECT DISTINCT admin 
                             FROM `MEMBERS`
                             WHERE member_ID = ?;";
 
@@ -4672,6 +5269,8 @@
                         $param_types = "i";
 
                         $is_club_admin = new Query($sql, $params, $param_types);
+
+                        // As only one value can be selected, check first item in multi-dimensional result array
                         switch ($is_club_admin->get_result_as_indexed_array()[0][0])
                         {
                             case 0:
@@ -4696,16 +5295,28 @@
             }
         }
 
+        /**
+         * Check if a guardianship relationship exists between a parent and a child.
+         *
+         * @param Query_Client $client The client performing the query.
+         * 
+         * @param int $parent_ID The parent's member ID.
+         * @param int $child_ID The child's member ID.
+         * 
+         * @return bool|null True if the guardianship record exists; false if no guardianship record exists; null if an error occurs.
+         */
         public static function check_guardianship_exists(Query_Client $client, int $parent_ID, int $child_ID)
         {
             try
             {
                 if ($client->get_client_type() == Client_Type::USER)
                 {
-                    if ($parent_ID == $client->get_member_ID())
+                    // Ensure the client's member ID matches the parent ID OR the child_ID
+                    if (($parent_ID == $client->get_member_ID()) or ($child_ID == $client->get_member_ID()))
                     {
+                        // SQL query which selects the guardianship_ID from a given parent_ID and child_ID
                         $sql = 
-                            "SELECT `guardianship_ID` 
+                            "SELECT DISTINCT `guardianship_ID` 
                             FROM `GUARDIANSHIP` 
                             WHERE (`parent_ID` = ? AND `child_ID` = ?);";
         
@@ -4713,7 +5324,10 @@
                         $param_types = "ii";
         
                         $check_is_parent = new Query($sql, $params, $param_types);
-        
+
+                        // Check if the result is null
+                        // If the result is null, the guardianship_ID cannot exist in the database
+                        // In default case return null (unknown case)
                         switch ($check_is_parent->check_null_result())
                         {
                             case true:
@@ -4731,6 +5345,7 @@
                 }
                 else if ($client->get_client_type() == Client_Type::SYSTEM) 
                 {
+                    // SQL query which selects the guardianship_ID from a given parent_ID and child_ID
                     $sql = 
                         "SELECT `guardianship_ID` 
                         FROM `GUARDIANSHIP` 
@@ -4741,6 +5356,9 @@
 
                     $check_is_parent = new Query($sql, $params, $param_types);
 
+                    // Check if the result is null
+                    // If the result is null, the guardianship_ID cannot exist in the database
+                    // In default case return null (unknown case)
                     switch ($check_is_parent->check_null_result())
                     {
                         case true:
@@ -4763,16 +5381,27 @@
             }
         }
 
+        /**
+         * Check if a member is a parent by checking if they have any guardianship records as a parent.
+         *
+         * @param Query_Client $client The client performing the query.
+         * 
+         * @param int $parent_ID The parent's member ID.
+         * 
+         * @return bool|null True if the member is a parent; false if member is not a parent; null if an error occurs.
+         */
         public static function check_is_parent(Query_Client $client, int $parent_ID)
         {
             try
             {
                 if ($client->get_client_type() == Client_Type::USER)
                 {
+                    // Ensure the client's member ID matches the parent ID.
                     if ($parent_ID == $client->get_member_ID())
                     {
+                        // Check if parent_ID param exists within a record in the GUARDIANSHIP table
                         $sql = 
-                            "SELECT `guardianship_ID` 
+                            "SELECT DISTINCT `guardianship_ID` 
                             FROM `GUARDIANSHIP` 
                             WHERE (parent_ID = ?);";
         
@@ -4781,6 +5410,9 @@
         
                         $check_is_parent = new Query($sql, $params, $param_types);
         
+                        // Check if the result is null
+                        // If the result is null, the guardianship_ID cannot exist in the database
+                        // In default case return null (unknown case)
                         switch ($check_is_parent->check_null_result())
                         {
                             case true:
@@ -4798,8 +5430,9 @@
                 }
                 else if ($client->get_client_type() == Client_Type::SYSTEM) 
                 {
+                    // Check if parent_ID param exists within a record in the GUARDIANSHIP table
                     $sql = 
-                        "SELECT `guardianship_ID` 
+                        "SELECT DISTINCT `guardianship_ID` 
                         FROM `GUARDIANSHIP` 
                         WHERE (parent_ID = ?);";
 
@@ -4808,6 +5441,9 @@
 
                     $check_is_parent = new Query($sql, $params, $param_types);
 
+                    // Check if the result is null
+                    // If the result is null, the guardianship_ID cannot exist in the database
+                    // In default case return null (unknown case)
                     switch ($check_is_parent->check_null_result())
                     {
                         case true:
@@ -4830,16 +5466,27 @@
             }
         }
 
+        /**
+         * Check if a member is a child by checking if they have any guardianship records as a child.
+         *
+         * @param Query_Client $client The client performing the query.
+         * 
+         * @param int $child_ID The child's member ID.
+         * 
+         * @return bool|null True if the member is a child; false if member is not a child; null if an error occurs.
+         */
         public static function check_is_child(Query_Client $client, int $child_ID)
         {
             try
             {
                 if ($client->get_client_type() == Client_Type::USER)
                 {
+                    // Ensure the client's member ID matches the child ID (identity checking)
                     if ($child_ID == $client->get_member_ID())
                     {
+                        // Check if child_ID param exists within a record in the GUARDIANSHIP table
                         $sql = 
-                            "SELECT `guardianship_ID` 
+                            "SELECT DISTINCT `guardianship_ID` 
                             FROM `GUARDIANSHIP` 
                             WHERE (child_ID = ?);";
 
@@ -4848,6 +5495,9 @@
 
                         $check_is_parent = new Query($sql, $params, $param_types);
 
+                        // Check if the result is null
+                        // If the result is null, the guardianship_ID cannot exist in the database
+                        // In default case return null (unknown case)
                         switch ($check_is_parent->check_null_result())
                         {
                             case true:
@@ -4865,8 +5515,9 @@
                 }
                 else if ($client->get_client_type() == Client_Type::SYSTEM) 
                 {
+                    // Check if child_ID param exists within a record in the GUARDIANSHIP table
                     $sql = 
-                        "SELECT `guardianship_ID` 
+                        "SELECT DISTINCT `guardianship_ID` 
                         FROM `GUARDIANSHIP` 
                         WHERE (child_ID = ?);";
 
@@ -4875,6 +5526,9 @@
 
                     $check_is_parent = new Query($sql, $params, $param_types);
 
+                    // Check if the result is null
+                    // If the result is null, the guardianship_ID cannot exist in the database
+                    // In default case return null (unknown case)
                     switch ($check_is_parent->check_null_result())
                     {
                         case true:
@@ -4896,14 +5550,51 @@
                 return null;
             }
         }
+
+        /**
+         * Uses PHP filter_var() function to check if an email is valid.
+         * 
+         * @param string $email The email to validate.
+         * 
+         * @return bool|null True for valid email; false for invalid email; null if an error occurs.
+         */
+        public static function check_valid_email(string $email)
+        {
+            try
+            {
+                switch (filter_var($email, FILTER_VALIDATE_EMAIL))
+                {
+                    case false:
+                        return false;
+                    default:
+                        return true;
+                }
+            }
+            catch (Throwable $error)
+            {
+                new Error_Handler($error);
+                return null;
+            }
+        }
     }
 
+    /**
+     * A utility class that provides common functions for typical system function.
+     */
     class System_Utility
     {
+        /**
+         * Converts a DateTime object into a string in the format "weekday day month".
+         * 
+         * @param DateTime $date The date to convert.
+         * 
+         * @return string|null The formatted date string; null if error occurs.
+         */
         public static function get_date_as_string(DateTime $date)
         {
             try
             {
+                // Format the date as a string in the format of "weekday day month"
                 $string = date_format($date, 'l jS F');
                 
                 return $string;
@@ -4915,10 +5606,18 @@
             }
         }
 
+        /**
+         * Converts a time value into a string containing the phrase "Meet at " followed by the time value.
+         * 
+         * @param mixed $meet_time The time value to convert.
+         * 
+         * @return string|null The formatted time string, or null if an error occurred.
+         */
         public static function get_meet_time_as_string($meet_time)
         {
             try
             {
+                // If the input is not a string, convert it to a string
                 switch (false)
                 {
                     case is_string($meet_time):
@@ -4939,10 +5638,18 @@
             }
         }
 
+        /**
+         * Converts a time value into a string containing the phrase "Starts at " followed by the time value.
+         * 
+         * @param mixed $start_time The time value to convert.
+         * 
+         * @return string|null The formatted time string, or null if an error occurred.
+         */
         public static function get_start_time_as_string($start_time)
         {
             try
             {
+                // If the input is not a string, convert it to a string
                 switch (false)
                 {
                     case is_string($start_time):
@@ -4963,10 +5670,18 @@
             }
         }
 
+        /**
+         * Generates a SHA-3-224 hash of a given input string.
+         * 
+         * @param mixed $data The input data to hash.
+         * 
+         * @return string|null The hash value as a hexadecimal string; null if an error occurs.
+         */
         public static function hash($data)
         {
             try
             {
+                // If the input is not a string, convert it to a string
                 switch (false)
                 {
                     case is_string($data):
@@ -4987,14 +5702,23 @@
             }
         }
 
+        /**
+         * Encrypts input data using base64 encoding.
+         * 
+         * @param mixed $data The data to encrypt.
+         * 
+         * @return string|null The encrypted data as a base64-encoded string; null if an error occurs.
+         */
         public static function encrypt($data)
         {
             try
             {
                 switch (true)
                 {
+                    // If the input is an array, escape it first using the escape_array method
                     case is_array(($data)):
                         $data = self::escape_array($data);
+                    // If the input is not a string, convert it to a string
                     case !(is_string($data)):
                         $data = strval($data);
                         break;
@@ -5013,10 +5737,18 @@
             }
         }
 
+        /**
+         * Decrypts data that has been encoded using base64 encoding.
+         * 
+         * @param mixed $data The encoded data to decrypt.
+         * 
+         * @return string|null The decrypted data as a string; null if an error occurs.
+         */
         public static function decrypt($data)
         {
             try
             {
+                // If the input is not a string, convert it to a string
                 switch (true)
                 {
                     case !(is_string($data)):
@@ -5037,6 +5769,13 @@
             }
         }
 
+        /**
+         * Recursively combines all the elements of a multi-dimensional array into a single string.
+         * 
+         * @param array $array The input array to escape.
+         * 
+         * @return string|null The escaped string, or null if an error occurred.
+         */
         public static function escape_array($array)
         {
             try
@@ -5055,6 +5794,18 @@
             }
         }
 
+        /**
+         * Prints the navbar for the website. 
+         * 
+         * Calling from a function ensures consistency across the site.
+         * 
+         * @param string $club_name The name of the club being displayed.
+         * 
+         * @param bool $club_admin Whether the user is a club admin or not.
+         * 
+         * @param bool $team_admin Whether the user is a team admin or not.
+         * 
+         */
         public static function print_navbar(string $club_name, bool $club_admin, bool $team_admin)
         {
 
@@ -5076,7 +5827,8 @@
                     <a class='nav-link active' aria-current='page' href='schedule.php'>Schedule</a>
                     </li>";
 
-                    if ($team_admin)
+                    // Only Team Admins and Club Admins have permission to use these pages
+                    if ($team_admin or $club_admin)
                     {
                         $navbar .= "<li class='nav-item'>
                         <a class='nav-link active' aria-current='page' href='create-event.php'>Create Event</a>
@@ -5085,6 +5837,7 @@
                         </li>";
                     }
                     
+                    // Only Club Admins have permission to use these pages
                     if ($club_admin)
                     {
                         $navbar .= "<li class='nav-item'>
@@ -5101,6 +5854,7 @@
                         </div>
                         </nav>";
 
+                // Return navbar HTML
                 echo $navbar;
         }
     }
